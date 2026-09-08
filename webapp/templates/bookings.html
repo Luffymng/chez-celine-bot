@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Брони {{ r.name }}{% endblock %}
+{% block content %}
+<h1>Брони: {{ r.name }}</h1>
+<div class="card">
+  <form method="get" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+    <div>
+      <label>Статус</label>
+      <select name="status">
+        {% for k, v in status_labels.items() %}
+        <option value="{{ k }}" {% if status == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Дата</label>
+      <input type="date" name="on_date" value="{{ on_date }}">
+    </div>
+    <label style="padding-bottom:9px;">
+      <input type="checkbox" name="upcoming" value="1" {% if upcoming %}checked{% endif %}> Только предстоящие
+    </label>
+    <button type="submit">Фильтровать</button>
+    <a href="{{ url_for('bookings', rid=r.id) }}" class="btn gray">Сбросить</a>
+  </form>
+</div>
+<div class="card">
+  {% if items %}
+  <table>
+    <tr><th>#</th><th>Гость</th><th>Телефон</th><th>Дата</th><th>Время</th><th>Гостей</th><th>Длит.</th><th>Комментарий</th><th>Статус</th><th></th></tr>
+    {% for b in items %}
+    <tr>
+      <td>{{ b.id }}</td>
+      <td>{{ b.guest_name }}</td>
+      <td>{{ b.phone }}</td>
+      <td>{{ b.date }}</td>
+      <td>{{ b.time }}</td>
+      <td>{{ b.guests }}</td>
+      <td>{{ b.duration_minutes }} мин</td>
+      <td>{{ b.comment or '' }}</td>
+      <td>{{ status_labels[b.status] }}</td>
+      <td>
+        {% if b.status != 'confirmed' %}
+        <form class="inline" method="post" action="{{ url_for('set_status', rid=r.id, bid=b.id) }}">
+          <input type="hidden" name="status" value="confirmed">
+          <button class="btn green" type="submit">Подтв.</button>
+        </form>
+        {% endif %}
+        {% if b.status != 'cancelled' %}
+        <form class="inline" method="post" action="{{ url_for('set_status', rid=r.id, bid=b.id) }}">
+          <input type="hidden" name="status" value="cancelled">
+          <button class="btn red" type="submit">Отм.</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">Брони не найдены.</p>{% endif %}
+</div>
+<a href="{{ url_for('dashboard', rid=r.id) }}" class="btn gray">Назад</a>
+{% endblock %}

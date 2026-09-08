@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Рестораны{% endblock %}
+{% block content %}
+<h1>Рестораны</h1>
+<div class="card">
+  <form method="post" action="{{ url_for('create') }}" style="display:flex;gap:10px;align-items:flex-end;">
+    <div style="flex:1;">
+      <label>Название нового ресторана</label>
+      <input name="name" placeholder="Например: Ресторан «Восток»" required>
+    </div>
+    <button type="submit">Создать</button>
+  </form>
+</div>
+{% for r in restaurants %}
+<div class="card">
+  <h2>{{ r.name }} <span class="muted">#{{ r.id }}</span></h2>
+  {% if not r.active %}<span class="muted">(неактивен)</span>{% endif %}
+  <p class="muted">{{ r.address }} · {{ r.hours }} · {{ r.phone }}</p>
+  <a href="{{ url_for('dashboard', rid=r.id) }}" class="btn">Панель</a>
+  <a href="{{ url_for('edit', rid=r.id) }}" class="btn gray">Настройки</a>
+  <a href="{{ url_for('bookings', rid=r.id) }}" class="btn gray">Брони</a>
+</div>
+{% else %}
+<div class="card muted">Пока нет ресторанов.</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Кабинет{% endblock %}</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --border:#e2e5ea; --text:#1c2333; --muted:#6b7486; --accent:#2f7dec; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:980px; margin:0 auto; padding:20px; }
+  nav { background:var(--card); border-bottom:1px solid var(--border); padding:12px 20px; display:flex; gap:16px; align-items:center; }
+  nav a { color:var(--text); text-decoration:none; font-weight:600; }
+  nav .right { margin-left:auto; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:18px; margin-bottom:16px; }
+  h1 { font-size:20px; margin:0 0 12px; }
+  h2 { font-size:16px; margin:0 0 10px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  input, select { width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:8px; font-size:14px; }
+  input[type=checkbox] { width:auto; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+  button, .btn { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:10px 16px; font-size:14px; cursor:pointer; text-decoration:none; display:inline-block; }
+  .btn.gray { background:#d7dbe3; color:var(--text); }
+  .btn.red { background:#e05b4d; }
+  .btn.green { background:#2fae6b; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; }
+  .flash { padding:10px 14px; border-radius:8px; margin-bottom:14px; }
+  .flash.ok { background:#e6f6ee; color:#1c7a49; }
+  .flash.error { background:#fdeaea; color:#b1332a; }
+  .muted { color:var(--muted); font-size:13px; }
+  a.link { color:var(--accent); }
+  form.inline { display:inline; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="{{ url_for('index') }}">Список ресторанов</a>
+  {% if session.get('logged_in') %}<a class="right" href="{{ url_for('logout') }}">Выйти</a>{% endif %}
+</nav>
+<div class="wrap">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+</body>
+</html>

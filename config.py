@@ -4,40 +4,87 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# === Параметры инстанса (env) ===
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
-ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip().isdigit()]
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"postgresql://{os.getenv('PGUSER', '')}@{os.getenv('PGHOST', 'localhost')}:5432/restaurant_saas",
+).strip()
+RESTAURANT_ID = int(os.getenv("RESTAURANT_ID", "1"))
+POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "60"))
 
-# Информация о ресторане
-RESTAURANT_NAME = "Chez Céline"
-RESTAURANT_ADDRESS = "г. Минск, ул. Интернациональная, 25А (метро Немига)"
-RESTAURANT_PHONE = "+375 44 577-11-22"
-RESTAURANT_HOURS = "Пн–Вс: 12:00 – 02:00"
-INSTAGRAM = "https://www.instagram.com/chez.celine.minsk"
-TELEGRAM_LINK = ""  # добавьте, когда появится
+# Админы ресторана — загружаются из БД, тут только запасной вариант
+ADMIN_IDS: list[int] = [
+    int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip().isdigit()
+]
 
-# Параметры бронирования
-OPEN_HOUR = 12          # открытие
-CLOSE_HOUR = 2          # закрытие 02:00 (последний слот не включается)
-WEEKEND_OPEN_HOUR = 12  # одинаково с буднями
-WEEKEND_CLOSE_HOUR = 2
-SLOT_MINUTES = 30       # шаг между слотами
+# === Настройки ресторана (загружаются из БД при старте, здесь — дефолты) ===
+RESTAURANT_NAME = ""
+RESTAURANT_ADDRESS = ""
+RESTAURANT_PHONE = ""
+RESTAURANT_HOURS = ""
+INSTAGRAM = ""
+TELEGRAM_LINK = ""
+
+OPEN_HOUR = 12
+CLOSE_HOUR = 23
+WEEKEND_OPEN_HOUR = 12
+WEEKEND_CLOSE_HOUR = 23
+SLOT_MINUTES = 30
 MIN_GUESTS = 1
 MAX_GUESTS = 8
 
-# Столы
-TABLE_CAPACITY = 4       # вместимость одного стола (4-местные)
-DEFAULT_TABLES = 12      # кол-во столов по умолчанию (меняется в админ-панели)
+TABLE_CAPACITY = 4
+DEFAULT_TABLES = 12
 MIN_TABLES = 1
 MAX_TABLES = 50
-DURATION_OPTIONS = [60, 90, 120, 150, 180]  # длительность визита, минуты
+DURATION_OPTIONS = [60, 90, 120, 150, 180]
 
-# Напоминания о брони
-REMINDER_DAY_HOURS = 24   # напоминание за сутки
-REMINDER_HOURS = 2        # напоминание за 2 часа
-POLL_INTERVAL = 60        # как часто проверять напоминания, сек
+REMINDER_DAY_HOURS = 24
+REMINDER_HOURS = 2
 
-# Файлы (положите в папку data/)
-DB_PATH = "data/chez_celine.db"
-MENU_PDF = ""  # "data/menu.pdf" — когда появится
-RESTAURANT_PHOTO = ""  # "data/restaurant.jpg" — когда появится
-ABOUT_VIDEO = "data/about.mp4"
+MENU_PDF = ""
+RESTAURANT_PHOTO = ""
+ABOUT_VIDEO = ""
+
+
+def apply_settings(data: dict | None) -> None:
+    """Заполняет глобальные настройки из строки ресторана (БД)."""
+    if not data:
+        return
+    global ADMIN_IDS
+    mapping = {
+        "RESTAURANT_NAME": "name",
+        "RESTAURANT_ADDRESS": "address",
+        "RESTAURANT_PHONE": "phone",
+        "RESTAURANT_HOURS": "hours",
+        "INSTAGRAM": "instagram",
+        "TELEGRAM_LINK": "telegram_link",
+        "OPEN_HOUR": "open_hour",
+        "CLOSE_HOUR": "close_hour",
+        "WEEKEND_OPEN_HOUR": "weekend_open_hour",
+        "WEEKEND_CLOSE_HOUR": "weekend_close_hour",
+        "SLOT_MINUTES": "slot_minutes",
+        "MIN_GUESTS": "min_guests",
+        "MAX_GUESTS": "max_guests",
+        "TABLE_CAPACITY": "table_capacity",
+        "DEFAULT_TABLES": "default_tables",
+        "MIN_TABLES": "min_tables",
+        "MAX_TABLES": "max_tables",
+        "DURATION_OPTIONS": "duration_options",
+        "REMINDER_DAY_HOURS": "reminder_day_hours",
+        "REMINDER_HOURS": "reminder_hour_hours",
+        "MENU_PDF": "menu_pdf",
+        "RESTAURANT_PHOTO": "restaurant_photo",
+        "ABOUT_VIDEO": "about_video",
+    }
+    for attr, key in mapping.items():
+        if key == "duration_options":
+            globals()[attr] = [int(x) for x in str(data.get(key) or "").split(",") if x.strip().isdigit()]
+            continue
+        globals()[attr] = data.get(key)
+
+    admin_raw = data.get("admin_ids") or ""
+    ids = [int(x) for x in str(admin_raw).split(",") if x.strip().isdigit()]
+    if ids:
+        ADMIN_IDS = ids

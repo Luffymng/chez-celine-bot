@@ -6,3 +6,5 @@ bot.log
 .DS_Store
 venv/
 .venv/
+data/*.mp4
+webapp/cabinet.log

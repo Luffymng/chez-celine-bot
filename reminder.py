@@ -20,7 +20,7 @@ DAY_MSG = (
 HOUR_MSG = (
     "⏰ <b>Скоро ваша бронь!</b>\n\n"
     "{text}\n\n"
-    "Ждём вас в Chez Céline!\n"
+    "Ждём вас в «{name}»!\n"
     "📍 {address} • {phone}"
 )
 
@@ -70,6 +70,7 @@ async def process_reminders(bot) -> None:
                 b,
                 HOUR_MSG.format(
                     text=_booking_info(b),
+                    name=config.RESTAURANT_NAME,
                     address=config.RESTAURANT_ADDRESS,
                     phone=config.RESTAURANT_PHONE,
                 ),

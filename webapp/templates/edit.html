@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Настройки {{ r.name }}{% endblock %}
+{% block content %}
+<h1>Настройки: {{ r.name }} <span class="muted">#{{ r.id }}</span></h1>
+<div class="card">
+<form method="post">
+  <div class="grid">
+    <div>
+      <label>Название</label>
+      <input name="name" value="{{ r.name }}">
+      <label>Адрес</label>
+      <input name="address" value="{{ r.address }}">
+      <label>Телефон</label>
+      <input name="phone" value="{{ r.phone }}">
+      <label>Часы работы (текст)</label>
+      <input name="hours" value="{{ r.hours }}">
+      <label>Instagram (ссылка)</label>
+      <input name="instagram" value="{{ r.instagram }}">
+      <label>Telegram (ссылка)</label>
+      <input name="telegram_link" value="{{ r.telegram_link }}">
+      <label>Токен бота</label>
+      <input name="token" value="{{ r.token }}" placeholder="123456:ABC...">
+      <label>Админы (id, ч/з запятую)</label>
+      <input name="admin_ids" value="{{ r.admin_ids }}">
+    </div>
+    <div>
+      <label>Открытие (будни)</label>
+      <input name="open_hour" type="number" value="{{ r.open_hour }}">
+      <label>Закрытие (будни)</label>
+      <input name="close_hour" type="number" value="{{ r.close_hour }}">
+      <label>Открытие (выходные)</label>
+      <input name="weekend_open_hour" type="number" value="{{ r.weekend_open_hour }}">
+      <label>Закрытие (выходные)</label>
+      <input name="weekend_close_hour" type="number" value="{{ r.weekend_close_hour }}">
+      <label>Шаг слотов (мин)</label>
+      <input name="slot_minutes" type="number" value="{{ r.slot_minutes }}">
+      <label>Длительности (мин, ч/з запятую)</label>
+      <input name="duration_options" value="{{ r.duration_options }}">
+      <label>Мин гостей / Макс гостей</label>
+      <div style="display:flex;gap:8px;">
+        <input name="min_guests" type="number" value="{{ r.min_guests }}">
+        <input name="max_guests" type="number" value="{{ r.max_guests }}">
+      </div>
+      <label>Напоминание за (ч) / за (ч)</label>
+      <div style="display:flex;gap:8px;">
+        <input name="reminder_day_hours" type="number" value="{{ r.reminder_day_hours }}">
+        <input name="reminder_hour_hours" type="number" value="{{ r.reminder_hour_hours }}">
+      </div>
+      <label>Вместимость стола</label>
+      <input name="table_capacity" type="number" value="{{ r.table_capacity }}">
+      <label>Столов: по умолч. / мин / макс</label>
+      <div style="display:flex;gap:8px;">
+        <input name="default_tables" type="number" value="{{ r.default_tables }}">
+        <input name="min_tables" type="number" value="{{ r.min_tables }}">
+        <input name="max_tables" type="number" value="{{ r.max_tables }}">
+      </div>
+    </div>
+    <div>
+      <label>Видео «О нас» (путь)</label>
+      <input name="about_video" value="{{ r.about_video }}" placeholder="data/about.mp4">
+      <label>Фото на старт (путь)</label>
+      <input name="restaurant_photo" value="{{ r.restaurant_photo }}" placeholder="data/restaurant.jpg">
+      <label>Меню PDF (путь)</label>
+      <input name="menu_pdf" value="{{ r.menu_pdf }}" placeholder="data/menu.pdf">
+      <label style="margin-top:14px;">
+        <input type="checkbox" name="active" {% if r.active %}checked{% endif %}> Активен
+      </label>
+    </div>
+  </div>
+  <br>
+  <button type="submit">Сохранить</button>
+  <a href="{{ url_for('dashboard', rid=r.id) }}" class="btn gray">Назад</a>
+</form>
+</div>
+{% endblock %}
