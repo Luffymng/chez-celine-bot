@@ -1,19 +1,19 @@
 import os
+import re
 import sys
-from datetime import date
+from datetime import date, datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import cabinet_db as cdb
-from dotenv import load_dotenv
+import config
 from flask import Flask, flash, redirect, render_template, request, session, url_for
-
-load_dotenv()
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
-app.secret_key = os.getenv("CABINET_SECRET", "change-me-cabinet-secret")
+app.secret_key = config.CABINET_SECRET
 
-CABINET_PASSWORD = os.getenv("CABINET_PASSWORD", "admin123")
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 STATUS_LABELS = {
     "all": "Все",
@@ -21,26 +21,113 @@ STATUS_LABELS = {
     "confirmed": "Подтверждённые",
     "cancelled": "Отменённые",
 }
+USER_STATUS_LABELS = {
+    "trial": "Пробный",
+    "active": "Оплачен",
+    "pending": "Ожидает оплату",
+    "blocked": "Заблокирован",
+}
+PLAN_PERIOD = "месяц"
+
+
+# === Помощники доступа ===
+
+def _ensure_db():
+    cdb.ensure_schema()
+
+
+def _current_user() -> dict | None:
+    uid = session.get("user_id")
+    if not uid:
+        return None
+    user = cdb.get_user(uid)
+    if user and user["status"] == "trial" and user["trial_ends_at"]:
+        if user["trial_ends_at"] < date.today():
+            cdb.set_user_status(uid, "blocked")
+            user["status"] = "blocked"
+    return user
+
+
+def _is_allowed(user: dict) -> bool:
+    return user is not None and (user["is_admin"] or user["status"] in ("trial", "active"))
 
 
 def _login_required(view):
     def wrapper(*args, **kwargs):
-        if not session.get("logged_in"):
+        user = _current_user()
+        if not user:
             return redirect(url_for("login"))
+        kwargs["user"] = user
         return view(*args, **kwargs)
 
     wrapper.__name__ = view.__name__
     return wrapper
 
 
+def _subscribed_required(view):
+    def wrapper(*args, **kwargs):
+        user = _current_user()
+        if not user:
+            return redirect(url_for("login"))
+        if not _is_allowed(user):
+            return redirect(url_for("subscribe"))
+        kwargs["user"] = user
+        return view(*args, **kwargs)
+
+    wrapper.__name__ = view.__name__
+    return wrapper
+
+
+def _can_r(user: dict, rid: int) -> bool:
+    return cdb.get_restaurant(rid, user["id"], user.get("is_admin")) is not None
+
+
+# === Аутентификация ===
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if request.form.get("password") == CABINET_PASSWORD:
-            session["logged_in"] = True
+        email = (request.form.get("email") or "").strip().lower()
+        password = request.form.get("password") or ""
+        user = cdb.get_user_by_email(email)
+        if user and check_password_hash(user["password_hash"], password):
+            session["user_id"] = user["id"]
             return redirect(url_for("index"))
-        flash("Неверный пароль", "error")
-    return render_template("login.html")
+        flash("Неверный e-mail или пароль", "error")
+    return render_template(
+        "login.html",
+        plan_price=config.PLAN_PRICE,
+        plan_period=PLAN_PERIOD,
+    )
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        email = (request.form.get("email") or "").strip().lower()
+        password = request.form.get("password") or ""
+        if not name or not EMAIL_RE.match(email) or len(password) < 6:
+            flash("Проверьте имя, e-mail и пароль (мин. 6 символов)", "error")
+        elif cdb.get_user_by_email(email):
+            flash("Этот e-mail уже зарегистрирован. Войдите.", "error")
+        else:
+            uid = cdb.create_user(
+                email,
+                generate_password_hash(password),
+                name,
+                config.TRIAL_DAYS,
+            )
+            if email == config.ADMIN_EMAIL:
+                cdb.set_user_status(uid, "active")
+                cdb.set_user_admin(uid, True)
+            session["user_id"] = uid
+            return redirect(url_for("index", welcome=1))
+    return render_template(
+        "register.html",
+        trial_days=config.TRIAL_DAYS,
+        plan_price=config.PLAN_PRICE,
+    )
 
 
 @app.route("/logout")
@@ -49,51 +136,86 @@ def logout():
     return redirect(url_for("login"))
 
 
-@app.route("/")
-@_login_required
-def index():
-    restaurants = cdb.list_restaurants()
-    return render_template("restaurants.html", restaurants=restaurants)
+# === Оплата (гейт входа) ===
 
-
-@app.route("/restaurant/<int:rid>")
-@_login_required
-def dashboard(rid: int):
-    restaurant = cdb.get_restaurant(rid)
-    if not restaurant:
-        flash("Ресторан не найден", "error")
+@app.route("/subscribe")
+def subscribe():
+    user = _current_user()
+    if user and _is_allowed(user):
         return redirect(url_for("index"))
-    today = date.today().isoformat()
-    pending = cdb.list_bookings(rid, status="pending")
-    today_b = cdb.list_bookings(rid, on_date=today)
-    upcoming = cdb.list_bookings(rid, upcoming=True)
     return render_template(
-        "dashboard.html",
-        r=restaurant,
-        pending=pending,
-        today_b=today_b,
-        upcoming=upcoming,
-        today=today,
-        status_labels=STATUS_LABELS,
+        "subscribe.html",
+        user=user,
+        plan_price=config.PLAN_PRICE,
+        plan_period=PLAN_PERIOD,
     )
 
 
+@app.route("/subscribe/request", methods=["POST"])
+def subscribe_request():
+    user = _current_user()
+    if user and _is_allowed(user):
+        return redirect(url_for("index"))
+    if user:
+        cdb.set_user_status(user["id"], "pending")
+        flash("Заявка отправлена. Активируем после подтверждения оплаты.", "ok")
+    return redirect(url_for("login"))
+
+
+# === Конструктор ===
+
+@app.route("/")
+@_subscribed_required
+def index(user):
+    _ensure_db()
+    restaurants = cdb.list_restaurants(user["id"], user.get("is_admin"))
+    welcome = request.args.get("welcome")
+    return render_template("restaurants.html", user=user, restaurants=restaurants,
+                           welcome=welcome, plan_price=config.PLAN_PRICE,
+                           trial_days=config.TRIAL_DAYS)
+
+
 @app.route("/create", methods=["POST"])
-@_login_required
-def create():
+@_subscribed_required
+def create(user):
+    _ensure_db()
     name = (request.form.get("name") or "").strip()
     if not name:
         flash("Укажите название ресторана", "error")
         return redirect(url_for("index"))
-    rid = cdb.create_restaurant(name)
-    flash("Ресторан создан. Заполните настройки.", "ok")
+    rid = cdb.create_restaurant(name, user["id"])
     return redirect(url_for("edit", rid=rid))
 
 
+@app.route("/restaurant/<int:rid>")
+@_subscribed_required
+def dashboard(rid: int, user):
+    _ensure_db()
+    if not _can_r(user, rid):
+        flash("Доступ запрещён", "error")
+        return redirect(url_for("index"))
+    restaurant = cdb.get_restaurant(rid, user["id"], user.get("is_admin"))
+    today = date.today().isoformat()
+    stats = cdb.booking_stats(rid, today)
+    pending = cdb.list_bookings(rid, status="pending")
+    today_b = cdb.list_bookings(rid, on_date=today)
+    remain = max(0, int(restaurant["default_tables"] or 0) - len(today_b))
+    return render_template(
+        "dashboard.html", user=user, r=restaurant,
+        stats=stats, pending=pending, today_b=today_b, today=today, remain=remain,
+        status_labels=STATUS_LABELS,
+        now=datetime.now(),
+    )
+
+
 @app.route("/restaurant/<int:rid>/edit", methods=["GET", "POST"])
-@_login_required
-def edit(rid: int):
+@_subscribed_required
+def edit(rid: int, user):
+    _ensure_db()
     if request.method == "POST":
+        if not _can_r(user, rid):
+            flash("Доступ запрещён", "error")
+            return redirect(url_for("index"))
         cdb.update_restaurant(
             rid,
             name=request.form.get("name", ""),
@@ -123,19 +245,23 @@ def edit(rid: int):
             about_video=request.form.get("about_video", ""),
             active=request.form.get("active") == "on",
         )
-        flash("Настройки сохранены", "ok")
-        return redirect(url_for("dashboard", rid=rid))
-    restaurant = cdb.get_restaurant(rid)
-    if not restaurant:
-        flash("Ресторан не найден", "error")
+        flash("Изменения сохранены и переданы боту", "ok")
+        return redirect(url_for("edit", rid=rid))
+    if not _can_r(user, rid):
+        flash("Доступ запрещён", "error")
         return redirect(url_for("index"))
-    return render_template("edit.html", r=restaurant)
+    restaurant = cdb.get_restaurant(rid, user["id"], user.get("is_admin"))
+    return render_template("edit.html", user=user, r=restaurant)
 
 
 @app.route("/restaurant/<int:rid>/bookings")
-@_login_required
-def bookings(rid: int):
-    restaurant = cdb.get_restaurant(rid)
+@_subscribed_required
+def bookings(rid: int, user):
+    _ensure_db()
+    if not _can_r(user, rid):
+        flash("Доступ запрещён", "error")
+        return redirect(url_for("index"))
+    restaurant = cdb.get_restaurant(rid, user["id"], user.get("is_admin"))
     status = request.args.get("status", "all")
     on_date = request.args.get("on_date", "")
     upcoming = request.args.get("upcoming", "") == "1"
@@ -144,35 +270,81 @@ def bookings(rid: int):
     else:
         items = cdb.list_bookings(rid, status=status)
     return render_template(
-        "bookings.html",
-        r=restaurant,
-        items=items,
-        status=status,
-        on_date=on_date,
-        upcoming=upcoming,
-        status_labels=STATUS_LABELS,
-        today=date.today().isoformat(),
+        "bookings.html", user=user, r=restaurant, items=items,
+        status=status, on_date=on_date, upcoming=upcoming,
+        status_labels=STATUS_LABELS, today=date.today().isoformat(),
     )
 
 
 @app.route("/restaurant/<int:rid>/booking/<int:bid>/status", methods=["POST"])
-@_login_required
-def set_status(rid: int, bid: int):
+@_subscribed_required
+def set_status(rid: int, bid: int, user):
+    if not _can_r(user, rid):
+        flash("Доступ запрещён", "error")
+        return redirect(url_for("index"))
     new_status = request.form.get("status")
     if new_status in ("pending", "confirmed", "cancelled"):
         cdb.set_status(bid, new_status)
-    return redirect(url_for("bookings", rid=rid))
+    return redirect(url_for("dashboard", rid=rid))
 
 
 @app.route("/restaurant/<int:rid>/tables", methods=["POST"])
-@_login_required
-def set_tables(rid: int):
+@_subscribed_required
+def set_tables(rid: int, user):
+    if not _can_r(user, rid):
+        flash("Доступ запрещён", "error")
+        return redirect(url_for("index"))
     count = _int(request.form.get("count")) or 0
-    restaurant = cdb.get_restaurant(rid)
+    restaurant = cdb.get_restaurant(rid, user["id"], user.get("is_admin"))
     bounded = max(restaurant["min_tables"], min(count, restaurant["max_tables"]))
     cdb.update_restaurant(rid, default_tables=bounded)
     flash("Количество столов обновлено", "ok")
     return redirect(url_for("dashboard", rid=rid))
+
+
+@app.route("/restaurant/<int:rid>/preview")
+@_subscribed_required
+def preview(rid: int, user):
+    _ensure_db()
+    if not _can_r(user, rid):
+        flash("Доступ запрещён", "error")
+        return redirect(url_for("index"))
+    restaurant = cdb.get_restaurant(rid, user["id"], user.get("is_admin"))
+    return render_template("preview.html", user=user, r=restaurant)
+
+
+# === Админ платформы ===
+
+def _admin_required(view):
+    def wrapper(*args, **kwargs):
+        user = _current_user()
+        if not user or not user.get("is_admin"):
+            return redirect(url_for("index"))
+        kwargs["user"] = user
+        return view(*args, **kwargs)
+
+    wrapper.__name__ = view.__name__
+    return wrapper
+
+
+@app.route("/admin/users")
+@_admin_required
+def admin_users(user):
+    _ensure_db()
+    users = cdb.list_users()
+    return render_template("admin_users.html", user=user, users=users,
+                           status_labels=USER_STATUS_LABELS,
+                           today=date.today())
+
+
+@app.route("/admin/users/<int:uid>/status", methods=["POST"])
+@_admin_required
+def admin_set_status(uid: int, user):
+    status = request.form.get("status")
+    if status in ("trial", "active", "pending", "blocked"):
+        cdb.set_user_status(uid, status)
+        flash("Статус пользователя обновлён", "ok")
+    return redirect(url_for("admin_users"))
 
 
 def _int(value) -> int | None:
@@ -185,4 +357,10 @@ def _int(value) -> int | None:
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=True)
+    _ensure_db()
+    cdb.ensure_admin(
+        config.ADMIN_EMAIL,
+        generate_password_hash(config.ADMIN_PASSWORD) if config.ADMIN_PASSWORD else "",
+    )
+    port = int(os.getenv("PORT", "5001"))
+    app.run(host="0.0.0.0", port=port, debug=True)

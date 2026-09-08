@@ -17,17 +17,17 @@ MONTHS_RU = [
 
 
 def main_menu_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🍽 Забронировать столик", callback_data="book")],
-            [InlineKeyboardButton(text="📋 Мои брони", callback_data="mine")],
-            [InlineKeyboardButton(text="📖 Меню", callback_data="menu")],
-            [InlineKeyboardButton(text="ℹ️ О нас", callback_data="about")],
-            [InlineKeyboardButton(text="🕐 Часы работы", callback_data="hours")],
-            [InlineKeyboardButton(text="📞 Контакты", callback_data="contacts")],
-            [InlineKeyboardButton(text="📷 Instagram", url=config.INSTAGRAM)],
-        ]
-    )
+    rows = [
+        [InlineKeyboardButton(text="🍽 Забронировать столик", callback_data="book")],
+        [InlineKeyboardButton(text="📋 Мои брони", callback_data="mine")],
+        [InlineKeyboardButton(text="📖 Меню", callback_data="menu")],
+        [InlineKeyboardButton(text="ℹ️ О нас", callback_data="about")],
+        [InlineKeyboardButton(text="🕐 Часы работы", callback_data="hours")],
+        [InlineKeyboardButton(text="📞 Контакты", callback_data="contacts")],
+    ]
+    if config.INSTAGRAM:
+        rows.append([InlineKeyboardButton(text="📷 Instagram", url=config.INSTAGRAM)])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def back_to_menu_kb() -> InlineKeyboardMarkup:

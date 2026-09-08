@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Регистрация — БотКонструктор{% endblock %}
+{% block body %}
+<div class="auth">
+  <div class="auth-card">
+    <div class="logo"><div class="mark">↗</div> БотКонструктор</div>
+    <h1 style="margin:10px 0 4px">Создайте бота ресторана</h1>
+    <p class="muted" style="color:var(--muted);margin:0 0 18px">
+      {{ trial_days }} дней бесплатно, дальше {{ plan_price }} ₽/мес
+    </p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    <form method="post">
+      <div class="field"><label>Ваше имя</label><input name="name" required autofocus placeholder="Иван Иванов"></div>
+      <div class="field"><label>E-mail</label><input type="email" name="email" required placeholder="you@restaurant.ru"></div>
+      <div class="field"><label>Пароль (мин. 6 символов)</label><input type="password" name="password" required></div>
+      <button class="btn grad" style="width:100%;justify-content:center">Начать {{ trial_days }}-дневный триал</button>
+    </form>
+    <p style="text-align:center;margin-top:16px;color:var(--muted);font-size:13px">
+      Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

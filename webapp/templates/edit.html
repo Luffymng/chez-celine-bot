@@ -1,75 +1,119 @@
 {% extends "base.html" %}
-{% block title %}Настройки {{ r.name }}{% endblock %}
+{% block title %}Настройки — {{ r.name }}{% endblock %}
+{% block pagetitle %}Конструктор бота{% endblock %}
 {% block content %}
-<h1>Настройки: {{ r.name }} <span class="muted">#{{ r.id }}</span></h1>
-<div class="card">
+
+<div class="card" style="padding:14px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+  <div>
+    <b>{{ r.name }}</b> <span style="color:var(--muted)">#{{ r.id }}</span>
+    <span class="pill {{ 'ok' if r.active else 'blocked' }}">{{ 'Бот активен' if r.active else 'Бот выключен' }}</span>
+    <span class="pill trial">Изменения доезжают до бота до 30 сек</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a class="btn gray sm" href="{{ url_for('preview', rid=r.id) }}">Превью</a>
+    <a class="btn gray sm" href="{{ url_for('dashboard', rid=r.id) }}">В панель</a>
+  </div>
+</div>
+
+<div class="grid cols-2-1">
+<div>
 <form method="post">
-  <div class="grid">
-    <div>
-      <label>Название</label>
-      <input name="name" value="{{ r.name }}">
-      <label>Адрес</label>
-      <input name="address" value="{{ r.address }}">
-      <label>Телефон</label>
-      <input name="phone" value="{{ r.phone }}">
-      <label>Часы работы (текст)</label>
-      <input name="hours" value="{{ r.hours }}">
-      <label>Instagram (ссылка)</label>
-      <input name="instagram" value="{{ r.instagram }}">
-      <label>Telegram (ссылка)</label>
-      <input name="telegram_link" value="{{ r.telegram_link }}">
-      <label>Токен бота</label>
-      <input name="token" value="{{ r.token }}" placeholder="123456:ABC...">
-      <label>Админы (id, ч/з запятую)</label>
-      <input name="admin_ids" value="{{ r.admin_ids }}">
-    </div>
-    <div>
-      <label>Открытие (будни)</label>
-      <input name="open_hour" type="number" value="{{ r.open_hour }}">
-      <label>Закрытие (будни)</label>
-      <input name="close_hour" type="number" value="{{ r.close_hour }}">
-      <label>Открытие (выходные)</label>
-      <input name="weekend_open_hour" type="number" value="{{ r.weekend_open_hour }}">
-      <label>Закрытие (выходные)</label>
-      <input name="weekend_close_hour" type="number" value="{{ r.weekend_close_hour }}">
-      <label>Шаг слотов (мин)</label>
-      <input name="slot_minutes" type="number" value="{{ r.slot_minutes }}">
-      <label>Длительности (мин, ч/з запятую)</label>
-      <input name="duration_options" value="{{ r.duration_options }}">
-      <label>Мин гостей / Макс гостей</label>
-      <div style="display:flex;gap:8px;">
-        <input name="min_guests" type="number" value="{{ r.min_guests }}">
-        <input name="max_guests" type="number" value="{{ r.max_guests }}">
-      </div>
-      <label>Напоминание за (ч) / за (ч)</label>
-      <div style="display:flex;gap:8px;">
-        <input name="reminder_day_hours" type="number" value="{{ r.reminder_day_hours }}">
-        <input name="reminder_hour_hours" type="number" value="{{ r.reminder_hour_hours }}">
-      </div>
-      <label>Вместимость стола</label>
-      <input name="table_capacity" type="number" value="{{ r.table_capacity }}">
-      <label>Столов: по умолч. / мин / макс</label>
-      <div style="display:flex;gap:8px;">
-        <input name="default_tables" type="number" value="{{ r.default_tables }}">
-        <input name="min_tables" type="number" value="{{ r.min_tables }}">
-        <input name="max_tables" type="number" value="{{ r.max_tables }}">
-      </div>
-    </div>
-    <div>
-      <label>Видео «О нас» (путь)</label>
-      <input name="about_video" value="{{ r.about_video }}" placeholder="data/about.mp4">
-      <label>Фото на старт (путь)</label>
-      <input name="restaurant_photo" value="{{ r.restaurant_photo }}" placeholder="data/restaurant.jpg">
-      <label>Меню PDF (путь)</label>
-      <input name="menu_pdf" value="{{ r.menu_pdf }}" placeholder="data/menu.pdf">
-      <label style="margin-top:14px;">
-        <input type="checkbox" name="active" {% if r.active %}checked{% endif %}> Активен
-      </label>
+
+  <div class="card">
+    <h2>🏷 Основное</h2>
+    <div class="field"><label>Название ресторана</label><input name="name" value="{{ r.name }}"></div>
+    <div class="field"><label>Адрес</label><input name="address" value="{{ r.address }}" placeholder="г. Минск, ул. Примерная, 1"></div>
+    <div class="field"><label>Телефон</label><input name="phone" value="{{ r.phone }}" placeholder="+375 XX XXX-XX-XX"></div>
+    <div class="field"><label>Часы работы (текст для гостей)</label><input name="hours" value="{{ r.hours }}" placeholder="Пн–Вс: 12:00 – 23:00"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Instagram (ссылка)</label><input name="instagram" value="{{ r.instagram }}" placeholder="https://instagram.com/..."></div>
+      <div class="field"><label>Telegram (ссылка)</label><input name="telegram_link" value="{{ r.telegram_link }}" placeholder="https://t.me/..."></div>
     </div>
   </div>
-  <br>
-  <button type="submit">Сохранить</button>
-  <a href="{{ url_for('dashboard', rid=r.id) }}" class="btn gray">Назад</a>
+
+  <div class="card">
+    <h2>🕐 График и слоты</h2>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+      <div class="field"><label>Открытие (будни)</label><input name="open_hour" type="number" value="{{ r.open_hour }}"></div>
+      <div class="field"><label>Закрытие (будни)</label><input name="close_hour" type="number" value="{{ r.close_hour }}"></div>
+      <div class="field"><label>Открытие (выходные)</label><input name="weekend_open_hour" type="number" value="{{ r.weekend_open_hour }}"></div>
+      <div class="field"><label>Закрытие (выходные)</label><input name="weekend_close_hour" type="number" value="{{ r.weekend_close_hour }}"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Шаг слотов (минут)</label><input name="slot_minutes" type="number" value="{{ r.slot_minutes }}"><div class="hint">Например 30 — слоты каждые полчаса</div></div>
+      <div class="field"><label>Длительности брони (мин, через запятую)</label><input name="duration_options" value="{{ r.duration_options }}"><div class="hint">60, 90, 120…</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Мин. гостей</label><input name="min_guests" type="number" value="{{ r.min_guests }}"></div>
+      <div class="field"><label>Макс. гостей</label><input name="max_guests" type="number" value="{{ r.max_guests }}"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div class="field"><label>Вместимость стола</label><input name="table_capacity" type="number" value="{{ r.table_capacity }}"></div>
+      <div class="field"><label>Столов сейчас</label><input name="default_tables" type="number" value="{{ r.default_tables }}"></div>
+      <div class="field"><label>Мин. столов</label><input name="min_tables" type="number" value="{{ r.min_tables }}"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🎞 Медиа и файлы</h2>
+    <div class="hint" style="margin-bottom:10px">Пути к файлам на сервере платформы (загрузка файлов — в следующей версии).</div>
+    <div class="field"><label>Видео «О нас»</label><input name="about_video" value="{{ r.about_video }}" placeholder="data/about.mp4"></div>
+    <div class="field"><label>Фото на старт</label><input name="restaurant_photo" value="{{ r.restaurant_photo }}" placeholder="data/restaurant.jpg"></div>
+    <div class="field"><label>Меню (PDF)</label><input name="menu_pdf" value="{{ r.menu_pdf }}" placeholder="data/menu.pdf"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:600">
+      <input type="checkbox" name="active" {% if r.active %}checked{% endif %}> Бот включён (принимает брони)
+    </label>
+  </div>
+
+  <div class="card">
+    <h2>🔑 Админ и напоминания</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Токен Telegram-бота</label><input name="token" value="{{ r.token }}" placeholder="123456:ABC-DEF..."><div class="hint">Получите у @BotFather</div></div>
+      <div class="field"><label>Админы (telegram id через запятую)</label><input name="admin_ids" value="{{ r.admin_ids }}" placeholder="1180896379"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Напомнить за (часов до даты)</label><input name="reminder_day_hours" type="number" value="{{ r.reminder_day_hours }}"></div>
+      <div class="field"><label>Напомнить за (часов до времени)</label><input name="reminder_hour_hours" type="number" value="{{ r.reminder_hour_hours }}"></div>
+    </div>
+  </div>
+
+  <button class="btn grad" style="width:100%;padding:13px;font-size:15px">Сохранить и отправить боту</button>
 </form>
 </div>
+
+<div style="align-self:start">
+  <div class="card">
+    <h2>🤖 Как подключить бота</h2>
+    <ol style="margin:0;padding-left:18px;color:var(--muted);font-size:13.5px;line-height:1.8">
+      <li>Откройте <b><a href="https://t.me/BotFather" target="_blank">@BotFather</a></b> в Telegram</li>
+      <li>Команда <b>/newbot</b> — задайте имя и username</li>
+      <li>Скопируйте токен (вида <span style="color:var(--text)">123456:ABC…</span>)</li>
+      <li>Вставьте его в поле «Токен» слева и сохраните</li>
+      <li>Бот подхватит настройки сам — создайте себе запись администратора</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>👀 Превью</h2>
+    <div class="phone">
+      <div class="screen">
+        <div class="bubble"><b>{{ r.name or 'Ресторан' }}</b>
+{{ r.address or 'г. Минск' }}{% if r.hours %}
+{{ r.hours }}{% endif %}</div>
+        <div class="me">Забронировать столик? 🍽</div>
+        <div class="kb">
+          <div class="btn grad">🍽 Забронировать столик</div>
+          <div class="btn gray">📋 Мои брони</div>
+          <div class="btn gray">📖 Меню</div>
+          <div class="btn gray">ℹ️ О нас</div>
+          <div class="btn gray">📞 Контакты</div>
+          {% if r.instagram %}<div class="btn gray">📷 Instagram</div>{% endif %}
+        </div>
+      </div>
+    </div>
+    <p style="text-align:center;color:var(--muted);font-size:12px;margin:12px 0 0">Как увидит ваш гость</p>
+  </div>
+</div>
+</div>
+
 {% endblock %}

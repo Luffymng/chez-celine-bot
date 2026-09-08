@@ -3,47 +3,167 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Кабинет{% endblock %}</title>
+<title>{% block title %}БотКонструктор{% endblock %}</title>
 <style>
-  :root { --bg:#f5f6f8; --card:#fff; --border:#e2e5ea; --text:#1c2333; --muted:#6b7486; --accent:#2f7dec; }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
-  .wrap { max-width:980px; margin:0 auto; padding:20px; }
-  nav { background:var(--card); border-bottom:1px solid var(--border); padding:12px 20px; display:flex; gap:16px; align-items:center; }
-  nav a { color:var(--text); text-decoration:none; font-weight:600; }
-  nav .right { margin-left:auto; }
-  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:18px; margin-bottom:16px; }
-  h1 { font-size:20px; margin:0 0 12px; }
-  h2 { font-size:16px; margin:0 0 10px; }
-  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
-  input, select { width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:8px; font-size:14px; }
-  input[type=checkbox] { width:auto; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
-  button, .btn { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:10px 16px; font-size:14px; cursor:pointer; text-decoration:none; display:inline-block; }
-  .btn.gray { background:#d7dbe3; color:var(--text); }
-  .btn.red { background:#e05b4d; }
-  .btn.green { background:#2fae6b; }
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); }
-  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; }
-  .flash { padding:10px 14px; border-radius:8px; margin-bottom:14px; }
-  .flash.ok { background:#e6f6ee; color:#1c7a49; }
-  .flash.error { background:#fdeaea; color:#b1332a; }
-  .muted { color:var(--muted); font-size:13px; }
-  a.link { color:var(--accent); }
-  form.inline { display:inline; }
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --line:#e7eaf3; --line2:#dfe3ef;
+    --text:#131838; --muted:#6a7194;
+    --primary:#6756ff; --primary2:#8f5bff; --grad:linear-gradient(135deg,#6756ff,#9b6bff);
+    --green:#1fae6a; --red:#ef5b6a; --amber:#f2a33c;
+    --sidebar:#161b38; --sidebar-text:#c9cff1;
+    --shadow:0 10px 30px rgba(19,24,56,.08);
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Inter","Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.45}
+  a{color:var(--primary);text-decoration:none}
+  h1,h2,h3{margin:0;line-height:1.2}
+  .wrap{max-width:1060px;margin:0 auto;padding:28px 24px}
+
+  /* ---------- shell ---------- */
+  .shell{display:flex;min-height:100vh}
+  aside{width:232px;background:var(--sidebar);flex-shrink:0;display:flex;flex-direction:column;padding:22px 14px;position:sticky;top:0;height:100vh}
+  .logo{display:flex;align-items:center;gap:10px;color:#fff;font-weight:700;font-size:16px;padding:4px 10px 20px}
+  .logo .mark{width:30px;height:30px;border-radius:9px;background:var(--grad);display:grid;place-items:center;font-size:16px;color:#fff}
+  nav a{display:flex;align-items:center;gap:10px;color:var(--sidebar-text);padding:10px 12px;border-radius:10px;margin-bottom:4px;font-weight:500}
+  nav a:hover,nav a.active{background:rgba(255,255,255,.08);color:#fff}
+  nav .ic{width:20px;text-align:center}
+  aside .foot{margin-top:auto;color:#7d84b0;font-size:12px;padding:10px}
+  main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.7);backdrop-filter:blur(6px)}
+  .topbar h1{font-size:18px;font-weight:700}
+  .topbar .spacer{flex:1}
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:600}
+  .pill.ok{background:#e4f6ec;color:var(--green)}
+  .pill.trial{background:#fff4e2;color:#b8791c}
+  .pill.blocked{background:#fde9eb;color:var(--red)}
+  .pill.pending{background:#ececfc;color:var(--primary)}
+  .pill.gray{background:#eef0f7;color:var(--muted)}
+  .avatar{width:34px;height:34px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:700}
+
+  /* ---------- cards ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow)}
+  .card + .card{margin-top:16px}
+  .card h2{font-size:15px;margin-bottom:14px}
+  .grid{display:grid;gap:14px}
+  .cols-2{grid-template-columns:1fr 1fr}
+  .cols-3{grid-template-columns:repeat(3,1fr)}
+  .cols-4{grid-template-columns:repeat(4,1fr)}
+  .cols-2-1{grid-template-columns:2fr 1fr}
+  @media(max-width:860px){.cols-2,.cols-3,.cols-4,.cols-2-1{grid-template-columns:1fr}}
+
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow)}
+  .stat .n{font-size:26px;font-weight:800;margin-top:2px}
+  .stat .l{color:var(--muted);font-size:13px;font-weight:600}
+  .stat .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+
+  /* ---------- buttons ---------- */
+  .btn{display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;border:0;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;font-family:inherit}
+  .btn:hover{filter:brightness(1.06)}
+  .btn.grad{background:var(--grad)}
+  .btn.gray{background:#eef0f7;color:var(--text)}
+  .btn.green{background:var(--green)}
+  .btn.red{background:var(--red)}
+  .btn.sm{padding:6px 12px;font-size:13px;border-radius:8px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+
+  /* ---------- forms ---------- */
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;letter-spacing:.02em}
+  .field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--line2);border-radius:10px;font-size:14px;font-family:inherit;background:#fff;color:var(--text)}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(103,86,255,.14)}
+  .field input[type=checkbox]{width:auto}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px}
+
+  /* ---------- table ---------- */
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{color:var(--muted);font-weight:600;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border-bottom:1px solid var(--line2)}
+  td{padding:10px;border-bottom:1px solid var(--line)}
+  tr:last-child td{border-bottom:0}
+  .table-scroll{overflow-x:auto}
+
+  /* ---------- hero / onboard ---------- */
+  .hero{background:var(--grad);border-radius:18px;color:#fff;padding:28px;position:relative;overflow:hidden}
+  .hero h1{font-size:24px;margin-bottom:6px}
+  .hero p{margin:4px 0;opacity:.9}
+  .hero.steps{display:flex;gap:0;align-items:center}
+  .step{display:flex;gap:12px;align-items:flex-start;flex:1;padding:0 16px;position:relative}
+  .step:not(:last-child)::after{content:"";position:absolute;right:0;top:18px;width:1px;height:42px;background:rgba(255,255,255,.25)}
+  .step .n{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;font-weight:800;font-size:15px;flex-shrink:0}
+  .step b{display:block;font-size:14px}
+  .step span{font-size:12.5px;opacity:.9}
+
+  /* ---------- flash ---------- */
+  .flash{padding:12px 16px;border-radius:12px;margin-bottom:14px;font-weight:500}
+  .flash.ok{background:#e4f6ec;color:#157a4a;border:1px solid #bfe7d2}
+  .flash.error{background:#fde9eb;color:#b33a48;border:1px solid #f4c4cb}
+
+  /* ---------- restaurant card ---------- */
+  .r-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px}
+  .r-card .name{font-size:16px;font-weight:700}
+  .r-card .meta{color:var(--muted);font-size:13px}
+  .r-card .acts{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+
+  /* ---------- subscribe ---------- */
+  .paywrap{max-width:760px;margin:0 auto;padding:34px 20px}
+  .plan{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:30px;box-shadow:var(--shadow);text-align:center}
+  .plan .price{font-size:46px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin:8px 0}
+  .plan ul{list-style:none;padding:0;text-align:left;display:inline-block;margin:14px auto}
+  .plan li{padding:6px 0;color:var(--text);font-size:14.5px}
+  .plan li::before{content:"✓ ";color:var(--green);font-weight:700}
+
+  /* ---------- auth ---------- */
+  .auth{min-height:100vh;display:grid;place-items:center;background:
+    radial-gradient(800px 500px at 15% 10%,rgba(103,86,255,.16),transparent 60%),
+    radial-gradient(700px 500px at 85% 90%,rgba(155,107,255,.16),transparent 60%),var(--bg);padding:20px}
+  .auth-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:34px;box-shadow:var(--shadow)}
+  .auth-card .logo{color:var(--text);justify-content:center;padding:0 0 6px}
+
+  /* ---------- phone preview ---------- */
+  .phone{width:260px;margin:0 auto;background:#0d1024;border-radius:34px;padding:12px;border:8px solid #1c2240;box-shadow:var(--shadow)}
+  .phone .screen{background:#fff;border-radius:26px;height:520px;padding:16px 14px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+  .phone .bubble{background:#eef1fb;border-radius:14px 14px 14px 4px;padding:10px 12px;font-size:12.5px;white-space:pre-line}
+  .phone .me{background:var(--primary);color:#fff;border-radius:14px 14px 4px 14px;padding:10px 12px;font-size:12.5px;margin-left:auto}
+  .phone .kb{margin-top:auto;display:flex;flex-direction:column;gap:6px}
+  .phone .btn{border-radius:8px;padding:8px;justify-content:center;font-size:12px}
 </style>
 </head>
 <body>
-<nav>
-  <a href="{{ url_for('index') }}">Список ресторанов</a>
-  {% if session.get('logged_in') %}<a class="right" href="{{ url_for('logout') }}">Выйти</a>{% endif %}
-</nav>
-<div class="wrap">
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
-  {% endwith %}
-  {% block content %}{% endblock %}
+{% block body %}
+<div class="shell">
+  <aside>
+    <div class="logo"><div class="mark">↗</div> БотКонструктор</div>
+    <nav>
+      <a class="{{ 'active' if active=='home' }}" href="{{ url_for('index') }}"><span class="ic">🏛</span> Мои рестораны</a>
+      <a class="{{ 'active' if active=='account' }}" href="{{ url_for('subscribe') }}"><span class="ic">💳</span> Тариф и оплата</a>
+      {% if user and user.get('is_admin') %}
+        <a class="{{ 'active' if active=='admin' }}" href="{{ url_for('admin_users') }}"><span class="ic">👥</span> Пользователи</a>
+      {% endif %}
+    </nav>
+    <div class="foot">Платформа брони-ботов</div>
+  </aside>
+  <main>
+    <div class="topbar">
+      <a href="{{ url_for('index') }}" style="color:var(--text)"><h1>{% block pagetitle %}Кабинет{% endblock %}</h1></a>
+      <div class="spacer"></div>
+      {% if user %}
+        <span class="pill {{ 'ok' if user.status in ('active',) else 'trial' if user.status=='trial' else 'blocked' if user.status=='blocked' else 'pending' }}">
+          {{ 'Оплачен' if user.status=='active' else ('Пробный · до ' ~ (user.trial_ends_at or '')) if user.status=='trial' else 'Заблокирован' if user.status=='blocked' else 'Ожидает оплату' }}
+          {% if user.get('is_admin') %}<span style="opacity:.7">· Админ</span>{% endif %}
+        </span>
+        <div class="avatar">{{ (user.name or '?')[0]|upper if user.name else '?' }}</div>
+        <span class="muted" style="color:var(--muted)">{{ user.name }}</span>
+        <a class="btn gray sm" href="{{ url_for('logout') }}">Выйти</a>
+      {% endif %}
+    </div>
+    <div class="wrap">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
 </div>
+{% endblock %}
 </body>
 </html>

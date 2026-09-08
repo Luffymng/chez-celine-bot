@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Брони {{ r.name }}{% endblock %}
+{% block title %}Брони — {{ r.name }}{% endblock %}
+{% block pagetitle %}Брони: {{ r.name }}{% endblock %}
 {% block content %}
-<h1>Брони: {{ r.name }}</h1>
+
 <div class="card">
-  <form method="get" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-    <div>
+  <form method="get" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+    <div class="field" style="margin:0;min-width:180px">
       <label>Статус</label>
       <select name="status">
         {% for k, v in status_labels.items() %}
@@ -12,50 +13,52 @@
         {% endfor %}
       </select>
     </div>
-    <div>
+    <div class="field" style="margin:0">
       <label>Дата</label>
       <input type="date" name="on_date" value="{{ on_date }}">
     </div>
-    <label style="padding-bottom:9px;">
+    <label class="field" style="margin:0;display:flex;align-items:center;gap:6px;padding-bottom:10px">
       <input type="checkbox" name="upcoming" value="1" {% if upcoming %}checked{% endif %}> Только предстоящие
     </label>
-    <button type="submit">Фильтровать</button>
-    <a href="{{ url_for('bookings', rid=r.id) }}" class="btn gray">Сбросить</a>
+    <button class="btn sm">Фильтровать</button>
+    <a class="btn gray sm" href="{{ url_for('bookings', rid=r.id) }}">Сбросить</a>
   </form>
 </div>
+
 <div class="card">
   {% if items %}
-  <table>
-    <tr><th>#</th><th>Гость</th><th>Телефон</th><th>Дата</th><th>Время</th><th>Гостей</th><th>Длит.</th><th>Комментарий</th><th>Статус</th><th></th></tr>
+  <div class="table-scroll"><table>
+    <tr><th>#</th><th>Гость</th><th>Дата</th><th>Время</th><th>Гостей</th><th>Длит.</th><th>Комментарий</th><th>Статус</th><th></th></tr>
     {% for b in items %}
     <tr>
       <td>{{ b.id }}</td>
-      <td>{{ b.guest_name }}</td>
-      <td>{{ b.phone }}</td>
-      <td>{{ b.date }}</td>
-      <td>{{ b.time }}</td>
-      <td>{{ b.guests }}</td>
+      <td><b>{{ b.guest_name }}</b><br><span style="color:var(--muted);font-size:12px">{{ b.phone }}</span></td>
+      <td>{{ b.date }}</td><td>{{ b.time }}</td><td>{{ b.guests }}</td>
       <td>{{ b.duration_minutes }} мин</td>
-      <td>{{ b.comment or '' }}</td>
-      <td>{{ status_labels[b.status] }}</td>
-      <td>
+      <td style="max-width:180px;color:var(--muted)">{{ b.comment or '—' }}</td>
+      <td><span class="pill {{ 'ok' if b.status=='confirmed' else 'pending' if b.status=='pending' else 'blocked' }}">{{ status_labels[b.status] }}</span></td>
+      <td style="white-space:nowrap">
         {% if b.status != 'confirmed' %}
-        <form class="inline" method="post" action="{{ url_for('set_status', rid=r.id, bid=b.id) }}">
+        <form method="post" action="{{ url_for('set_status', rid=r.id, bid=b.id) }}" style="display:inline">
           <input type="hidden" name="status" value="confirmed">
-          <button class="btn green" type="submit">Подтв.</button>
+          <button class="btn green sm">Подтв.</button>
         </form>
         {% endif %}
         {% if b.status != 'cancelled' %}
-        <form class="inline" method="post" action="{{ url_for('set_status', rid=r.id, bid=b.id) }}">
+        <form method="post" action="{{ url_for('set_status', rid=r.id, bid=b.id) }}" style="display:inline">
           <input type="hidden" name="status" value="cancelled">
-          <button class="btn red" type="submit">Отм.</button>
+          <button class="btn red sm">Отм.</button>
         </form>
         {% endif %}
       </td>
     </tr>
     {% endfor %}
-  </table>
-  {% else %}<p class="muted">Брони не найдены.</p>{% endif %}
+  </table></div>
+  {% else %}<p style="color:var(--muted)">Брони не найдены.</p>{% endif %}
 </div>
-<a href="{{ url_for('dashboard', rid=r.id) }}" class="btn gray">Назад</a>
+
+<div style="margin-top:14px">
+  <a class="btn gray sm" href="{{ url_for('dashboard', rid=r.id) }}">← В панель</a>
+</div>
+
 {% endblock %}

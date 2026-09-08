@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Пользователи{% endblock %}
+{% block pagetitle %}Пользователи платформы{% endblock %}
+{% block content %}
+
+<div class="card">
+  <div class="table-scroll"><table>
+    <tr>
+      <th>ID</th><th>Имя</th><th>E-mail</th><th>Статус</th><th>Триал до</th>
+      <th>Боты</th><th>Создан</th><th></th>
+    </tr>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.id }}</td>
+      <td><b>{{ u.name }}</b>{% if u.is_admin %} <span class="pill ok">Админ</span>{% endif %}</td>
+      <td>{{ u.email }}</td>
+      <td><span class="pill {{ 'ok' if u.status=='active' else 'trial' if u.status=='trial' else 'pending' if u.status=='pending' else 'blocked' }}">
+        {{ status_labels[u.status] }}
+      </span></td>
+      <td>{{ u.trial_ends_at or '—' }}{% if u.status=='trial' and u.trial_ends_at and u.trial_ends_at < today %} <span style="color:var(--red)">(истёк)</span>{% endif %}</td>
+      <td>
+        {% for b in u.get('_bots') or [] %}
+          <span class="pill gray">{{ b.name }}{% if not b.active %} ✕{% endif %}</span>
+        {% else %}—{% endfor %}
+      </td>
+      <td style="color:var(--muted)">{{ u.created_at.strftime('%d.%m') if u.created_at else '' }}</td>
+      <td style="white-space:nowrap">
+        <form method="post" action="{{ url_for('admin_set_status', uid=u.id) }}" style="display:inline">
+          <select name="status" onchange="this.form.submit()" style="padding:6px 8px;border:1px solid var(--line2);border-radius:8px">
+            <option value="trial" {% if u.status=='trial' %}selected{% endif %}>Пробный</option>
+            <option value="active" {% if u.status=='active' %}selected{% endif %}>Оплачен</option>
+            <option value="pending" {% if u.status=='pending' %}selected{% endif %}>Ожидает</option>
+            <option value="blocked" {% if u.status=='blocked' %}selected{% endif %}>Заблокирован</option>
+          </select>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table></div>
+</div>
+
+{% endblock %}

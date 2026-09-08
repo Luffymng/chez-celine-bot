@@ -13,6 +13,13 @@ DATABASE_URL = os.getenv(
 RESTAURANT_ID = int(os.getenv("RESTAURANT_ID", "1"))
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "60"))
 
+# === Веб-конструктор ===
+CABINET_SECRET = os.getenv("CABINET_SECRET", "change-me-cabinet-secret")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@bot.local")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+PLAN_PRICE = int(os.getenv("PLAN_PRICE", "1500"))
+TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "7"))
+
 # Админы ресторана — загружаются из БД, тут только запасной вариант
 ADMIN_IDS: list[int] = [
     int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip().isdigit()

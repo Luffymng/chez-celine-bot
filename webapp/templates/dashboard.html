@@ -1,67 +1,73 @@
 {% extends "base.html" %}
 {% block title %}{{ r.name }}{% endblock %}
+{% block pagetitle %}{{ r.name }} #{{ r.id }}{% endblock %}
 {% block content %}
-<h1>{{ r.name }} <span class="muted">#{{ r.id }}</span></h1>
-<div class="card">
-  <h2>Столы</h2>
-  <p class="muted">Сейчас {{ r.default_tables }} столов (вместимость — {{ r.table_capacity }} чел.)</p>
-  <form method="post" action="{{ url_for('set_tables', rid=r.id) }}" style="display:flex;gap:10px;max-width:260px;">
-    <input type="number" name="count" value="{{ r.default_tables }}" min="{{ r.min_tables }}" max="{{ r.max_tables }}">
-    <button type="submit">Изменить</button>
-  </form>
+
+<div class="grid cols-4" style="display:grid">
+  <div class="stat"><div class="l"><span class="dot" style="background:var(--amber)"></span>Сегодня</div><div class="n">{{ stats.today }}</div></div>
+  <div class="stat"><div class="l"><span class="dot" style="background:var(--primary)"></span>Предстоящие</div><div class="n">{{ stats.upcoming }}</div></div>
+  <div class="stat"><div class="l"><span class="dot" style="background:var(--red)"></span>Неподтверждённые</div><div class="n">{{ stats.pending }}</div></div>
+  <div class="stat"><div class="l"><span class="dot" style="background:var(--green)"></span>Свободно столов</div><div class="n">{{ remain }}</div></div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div>
+      <h2>Столы <span style="color:var(--muted);font-weight:400">({{ r.default_tables }} · вместимость {{ r.table_capacity }} чел.)</span></h2>
+      <p class="hint">Максимум на слот = свободные столы. Изменится в боте сразу.</p>
+    </div>
+    <form method="post" action="{{ url_for('set_tables', rid=r.id) }}" style="display:flex;gap:8px">
+      <input type="number" name="count" value="{{ r.default_tables }}" min="{{ r.min_tables }}" max="{{ r.max_tables }}" style="width:90px;padding:8px 10px;border:1px solid var(--line2);border-radius:10px">
+      <button class="btn sm">Сохранить</button>
+    </form>
+  </div>
 </div>
 
 <div class="card">
-  <h2>Неподтверждённые</h2>
+  <h2>Неподтверждённые брони <span class="pill gray" style="margin-left:6px">{{ stats.pending }}</span></h2>
   {% if pending %}
-  <table>
-    <tr><th>#</th><th>Гость</th><th>Дата</th><th>Время</th><th>Гости</th><th>Статус</th><th></th></tr>
+  <div class="table-scroll"><table>
+    <tr><th>#</th><th>Гость</th><th>Дата</th><th>Время</th><th>Гостей</th><th></th></tr>
     {% for b in pending %}
     <tr>
-      <td>{{ b.id }}</td><td>{{ b.guest_name }}<br><span class="muted">{{ b.phone }}</span></td>
-      <td>{{ b.date }}</td><td>{{ b.time }}</td><td>{{ b.guests }}</td><td>{{ status_labels[b.status] }}</td>
-      <td>
-        <form class="inline" method="post" action="{{ url_for('set_status', rid=r.id, bid=b.id) }}">
+      <td>{{ b.id }}</td>
+      <td><b>{{ b.guest_name }}</b><br><span style="color:var(--muted);font-size:12px">{{ b.phone }}</span></td>
+      <td>{{ b.date }}</td><td>{{ b.time }}</td><td>{{ b.guests }} чел.</td>
+      <td style="white-space:nowrap">
+        <form method="post" action="{{ url_for('set_status', rid=r.id, bid=b.id) }}" style="display:inline">
           <input type="hidden" name="status" value="confirmed">
-          <button class="btn green" type="submit">✅</button>
+          <button class="btn green sm">✓ Подтвердить</button>
         </form>
-        <form class="inline" method="post" action="{{ url_for('set_status', rid=r.id, bid=b.id) }}">
+        <form method="post" action="{{ url_for('set_status', rid=r.id, bid=b.id) }}" style="display:inline">
           <input type="hidden" name="status" value="cancelled">
-          <button class="btn red" type="submit">❌</button>
+          <button class="btn red sm">✕</button>
         </form>
       </td>
     </tr>
     {% endfor %}
-  </table>
-  {% else %}<p class="muted">Нет неподтверждённых броней.</p>{% endif %}
+  </table></div>
+  {% else %}<p class="muted" style="color:var(--muted)">Неподтверждённых броней нет — всё под контролем.</p>{% endif %}
 </div>
 
 <div class="card">
   <h2>Сегодня ({{ today }})</h2>
   {% if today_b %}
-  <table>
-    <tr><th>#</th><th>Гость</th><th>Время</th><th>Гости</th><th>Статус</th></tr>
+  <div class="table-scroll"><table>
+    <tr><th>#</th><th>Гость</th><th>Время</th><th>Гостей</th><th>Статус</th></tr>
     {% for b in today_b %}
-    <tr><td>{{ b.id }}</td><td>{{ b.guest_name }}</td><td>{{ b.time }}</td><td>{{ b.guests }}</td><td>{{ status_labels[b.status] }}</td></tr>
+    <tr>
+      <td>{{ b.id }}</td><td>{{ b.guest_name }}</td><td>{{ b.time }}</td><td>{{ b.guests }}</td>
+      <td><span class="pill {{ 'ok' if b.status=='confirmed' else 'pending' if b.status=='pending' else 'blocked' }}">{{ status_labels[b.status] }}</span></td>
+    </tr>
     {% endfor %}
-  </table>
-  {% else %}<p class="muted">Сегодня броней нет.</p>{% endif %}
+  </table></div>
+  {% else %}<p class="muted" style="color:var(--muted)">Сегодня броней нет.</p>{% endif %}
 </div>
 
-<div class="card">
-  <h2>Предстоящие</h2>
-  {% if upcoming %}
-  <table>
-    <tr><th>#</th><th>Гость</th><th>Дата</th><th>Время</th><th>Гости</th><th>Статус</th></tr>
-    {% for b in upcoming %}
-    <tr><td>{{ b.id }}</td><td>{{ b.guest_name }}</td><td>{{ b.date }}</td><td>{{ b.time }}</td><td>{{ b.guests }}</td><td>{{ status_labels[b.status] }}</td></tr>
-    {% endfor %}
-  </table>
-  {% else %}<p class="muted">Предстоящих броней нет.</p>{% endif %}
+<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+  <a class="btn grad" href="{{ url_for('edit', rid=r.id) }}">Настроить бота</a>
+  <a class="btn gray" href="{{ url_for('bookings', rid=r.id) }}">Все брони</a>
+  <a class="btn gray" href="{{ url_for('preview', rid=r.id) }}">Превью бота</a>
 </div>
 
-<div style="margin-top:16px;">
-  <a href="{{ url_for('edit', rid=r.id) }}" class="btn">Настройки</a>
-  <a href="{{ url_for('bookings', rid=r.id) }}" class="btn gray">Все брони</a>
-</div>
 {% endblock %}

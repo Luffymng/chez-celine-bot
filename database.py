@@ -17,8 +17,20 @@ def _rid() -> int:
 
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'trial',
+    trial_ends_at DATE,
+    is_admin BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS restaurants (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     token TEXT UNIQUE,
     admin_ids TEXT NOT NULL DEFAULT '',
@@ -81,6 +93,13 @@ async def init_db() -> None:
         _pool = await asyncpg.create_pool(config.DATABASE_URL, min_size=1, max_size=10)
     async with _pool.acquire() as conn:
         await conn.execute(SCHEMA)
+        # Миграция: поле владельца для старых баз
+        col = await conn.fetchval(
+            "SELECT 1 FROM information_schema.columns"
+            " WHERE table_name='restaurants' AND column_name='user_id'"
+        )
+        if not col:
+            await conn.execute("ALTER TABLE restaurants ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE")
         # Ресторан по умолчанию, если настроек ещё нет
         row = await conn.fetchrow("SELECT id FROM restaurants WHERE id = $1", config.RESTAURANT_ID)
         if row is None:
@@ -108,12 +127,12 @@ async def get_restaurant_by_token(token: str) -> dict | None:
         return dict(row) if row else None
 
 
-async def create_restaurant(*, name: str, token: str = "", admin_ids: str = "") -> int:
+async def create_restaurant(*, name: str, token: str = "", admin_ids: str = "", user_id: int | None = None) -> int:
     async with _pool.acquire() as conn:
         rid = await conn.fetchval(
-            "INSERT INTO restaurants (name, token, admin_ids) VALUES ($1, $2, $3)"
+            "INSERT INTO restaurants (name, token, admin_ids, user_id) VALUES ($1, $2, $3, $4)"
             " RETURNING id",
-            name, token or None, admin_ids,
+            name, token or None, admin_ids, user_id,
         )
         return rid
 

@@ -22,12 +22,14 @@ def _welcome() -> str:
 
 
 def _about() -> str:
-    return (
-        f"🏠 <b>{config.RESTAURANT_NAME}</b>\n\n"
-        f"📍 {config.RESTAURANT_ADDRESS}\n"
-        f"📞 {config.RESTAURANT_PHONE}\n"
-        f"📷 {config.INSTAGRAM}"
-    )
+    parts = [
+        f"🏠 <b>{config.RESTAURANT_NAME}</b>\n",
+        f"📍 {config.RESTAURANT_ADDRESS}",
+        f"📞 {config.RESTAURANT_PHONE}",
+    ]
+    if config.INSTAGRAM:
+        parts.append(f"📷 {config.INSTAGRAM}")
+    return "\n".join(parts)
 
 
 def _hours() -> str:
@@ -39,13 +41,15 @@ def _hours() -> str:
 
 
 def _contacts() -> str:
-    return (
-        "📞 <b>Контакты</b>\n\n"
-        f"📍 Адрес: {config.RESTAURANT_ADDRESS}\n"
-        f"📞 Телефон: {config.RESTAURANT_PHONE}\n"
-        f"📷 Instagram: {config.INSTAGRAM}\n"
-        f"🕐 {config.RESTAURANT_HOURS}"
-    )
+    parts = [
+        "📞 <b>Контакты</b>\n",
+        f"📍 Адрес: {config.RESTAURANT_ADDRESS}",
+        f"📞 Телефон: {config.RESTAURANT_PHONE}",
+    ]
+    if config.INSTAGRAM:
+        parts.append(f"📷 Instagram: {config.INSTAGRAM}")
+    parts.append(f"🕐 {config.RESTAURANT_HOURS}")
+    return "\n".join(parts)
 
 
 def _menu_fallback() -> str:

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Тариф — БотКонструктор{% endblock %}
+{% block body %}
+<div class="paywrap">
+  <div style="text-align:right;margin-bottom:10px">
+    {% if user %}<a class="btn gray sm" href="{{ url_for('logout') }}">Выйти из аккаунта</a>{% endif %}
+  </div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+  <div style="text-align:center;margin-bottom:20px">
+    <div class="logo" style="justify-content:center"><div class="mark">↗</div> БотКонструктор</div>
+    <p style="color:var(--muted);margin:6px 0 0">Бот бронирования для вашего ресторана</p>
+  </div>
+
+  <div class="plan">
+    <span class="pill trial">Бизнес-тариф</span>
+    <div class="price">{{ plan_price }} ₽<span style="font-size:16px;color:var(--muted)">/{{ plan_period }}</span></div>
+    <ul>
+      <li>Свой Telegram-бот бронирования</li>
+      <li>Управление из личного кабинета</li>
+      <li>Напоминания гостям за сутки и за 2 часа</li>
+      <li>Панель админа прямо в Telegram</li>
+      <li>Экспорт и статистика броней</li>
+    </ul>
+
+    {% if user %}
+      {% if user.status == 'trial' %}
+        <p class="hint" style="text-align:center">Пробный доступ до <b>{{ user.trial_ends_at }}</b>. При оплате период начнётся после окончания триала.</p>
+        <form method="post" action="{{ url_for('subscribe_request') }}">
+          <button class="btn grad" style="width:100%;justify-content:center;font-size:15px;padding:13px">Оплатить {{ plan_price }} ₽</button>
+        </form>
+        <p class="hint" style="text-align:center;margin-top:10px">Оплата активируется вручную после подтверждения</p>
+      {% elif user.status == 'pending' %}
+        <div class="flash ok">Заявка на оплату отправлена. Мы активируем после подтверждения.</div>
+        <p class="hint" style="text-align:center">Если оплатили — напишите нам в поддержку.</p>
+      {% elif user.status == 'blocked' %}
+        <p class="hint" style="text-align:center;color:var(--red)">Бесплатный период закончился. Оплатите доступ, чтобы продолжить.</p>
+        <form method="post" action="{{ url_for('subscribe_request') }}">
+          <button class="btn grad" style="width:100%;justify-content:center;font-size:15px;padding:13px">Оплатить {{ plan_price }} ₽</button>
+        </form>
+      {% else %}
+        <div class="flash ok">Тариф активен. Спасибо! 🎉</div>
+        <p style="text-align:center"><a class="btn gray" href="{{ url_for('index') }}">В конструктор</a></p>
+      {% endif %}
+    {% else %}
+      <form method="post" action="{{ url_for('subscribe_request') }}">
+        <button class="btn grad" style="width:100%;justify-content:center;font-size:15px;padding:13px">Оплатить {{ plan_price }} ₽</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

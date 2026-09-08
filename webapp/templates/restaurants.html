@@ -1,26 +1,70 @@
 {% extends "base.html" %}
-{% block title %}Рестораны{% endblock %}
+{% block title %}Мои рестораны{% endblock %}
+{% block pagetitle %}Конструктор{% endblock %}
 {% block content %}
-<h1>Рестораны</h1>
-<div class="card">
-  <form method="post" action="{{ url_for('create') }}" style="display:flex;gap:10px;align-items:flex-end;">
-    <div style="flex:1;">
-      <label>Название нового ресторана</label>
-      <input name="name" placeholder="Например: Ресторан «Восток»" required>
-    </div>
-    <button type="submit">Создать</button>
-  </form>
+
+{% if welcome %}
+  <div class="flash ok">Аккаунт создан! Добро пожаловать 🎉</div>
+{% endif %}
+
+<div class="hero">
+  <h1>Добрый день, {{ user.name }} 👋</h1>
+  <p>Создайте бота-бронь для своего ресторана за 2 минуты — без программистов.</p>
 </div>
+<div class="card" style="margin-top:16px">
+  <h2>Как это работает</h2>
+  <div class="hero steps" style="background:transparent;color:var(--text);padding:0">
+    <div class="step"><div class="n" style="background:var(--grad);color:#fff">1</div><div><b>Создайте бота в Telegram</b><span>У @BotFather получите токен</span></div></div>
+    <div class="step"><div class="n" style="background:var(--grad);color:#fff">2</div><div><b>Заполните настройки</b><span>Название, адрес, часы, слоты</span></div></div>
+    <div class="step"><div class="n" style="background:var(--grad);color:#fff">3</div><div><b>Бот запущен</b><span>Изменения применяются сразу</span></div></div>
+  </div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin:22px 0 12px">
+  <h2 style="font-size:17px">Ваши рестораны</h2>
+  <details style="position:relative">
+    <summary class="btn grad sm" style="list-style:none">+ Новый ресторан</summary>
+    <div class="card" style="position:absolute;right:0;top:42px;z-index:10;width:380px">
+      <form method="post" action="{{ url_for('create') }}">
+        <div class="field"><label>Название ресторана</label><input name="name" placeholder="Например: Ресторан «Восток»" required></div>
+        <button class="btn" type="submit">Создать</button>
+      </form>
+    </div>
+  </details>
+</div>
+
+{% if restaurants %}
+<div class="grid cols-2">
 {% for r in restaurants %}
-<div class="card">
-  <h2>{{ r.name }} <span class="muted">#{{ r.id }}</span></h2>
-  {% if not r.active %}<span class="muted">(неактивен)</span>{% endif %}
-  <p class="muted">{{ r.address }} · {{ r.hours }} · {{ r.phone }}</p>
-  <a href="{{ url_for('dashboard', rid=r.id) }}" class="btn">Панель</a>
-  <a href="{{ url_for('edit', rid=r.id) }}" class="btn gray">Настройки</a>
-  <a href="{{ url_for('bookings', rid=r.id) }}" class="btn gray">Брони</a>
+  <div class="r-card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="name">{{ r.name }} <span style="color:var(--muted);font-weight:500">#{{ r.id }}</span></div>
+      <span class="pill {{ 'ok' if r.active else 'blocked' }}">{{ 'Активен' if r.active else 'Выкл.' }}</span>
+    </div>
+    <div class="meta">📍 {{ r.address or 'адрес не указан' }}</div>
+    <div class="meta">🕐 {{ r.hours or 'часы не заданы' }}</div>
+    {% if r.token %}
+      <div class="meta" style="word-break:break-all">🤖 @нет — бот: {{ r.token[:16] }}…</div>
+    {% else %}
+      <div class="meta" style="color:var(--amber)">⚠ Не подключён токен бота — заполните в настройках</div>
+    {% endif %}
+    <div class="acts">
+      <a class="btn sm" href="{{ url_for('dashboard', rid=r.id) }}">Панель</a>
+      <a class="btn sm gray" href="{{ url_for('edit', rid=r.id) }}">Настройки</a>
+      <a class="btn sm gray" href="{{ url_for('bookings', rid=r.id) }}">Брони</a>
+      <a class="btn sm gray" href="{{ url_for('preview', rid=r.id) }}">Превью</a>
+    </div>
+  </div>
+{% endfor %}
 </div>
 {% else %}
-<div class="card muted">Пока нет ресторанов.</div>
-{% endfor %}
+<div class="card" style="text-align:center;padding:44px 20px">
+  <div style="font-size:42px">🍽</div>
+  <h2 style="margin:10px 0 6px">Пока нет ни одного ресторана</h2>
+  <p class="muted" style="color:var(--muted);max-width:420px;margin:0 auto 16px">
+    Нажмите «+ Новый ресторан», добавьте название — и конструктор поможет подключить бота.
+  </p>
+</div>
+{% endif %}
+
 {% endblock %}

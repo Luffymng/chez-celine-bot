@@ -1,13 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Вход{% endblock %}
-{% block content %}
-<div class="card" style="max-width:360px;margin:40px auto;">
-  <h1>Вход в кабинет</h1>
-  <form method="post">
-    <label>Пароль</label>
-    <input type="password" name="password" required autofocus>
-    <br><br>
-    <button type="submit">Войти</button>
-  </form>
+{% block title %}Вход — БотКонструктор{% endblock %}
+{% block body %}
+<div class="auth">
+  <div class="auth-card">
+    <div class="logo"><div class="mark">↗</div> БотКонструктор</div>
+    <h1 style="margin:10px 0 4px">Вход</h1>
+    <p class="muted" style="color:var(--muted);margin:0 0 18px">Управляйте ботом вашего ресторана</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    <form method="post">
+      <div class="field"><label>E-mail</label><input type="email" name="email" required autofocus></div>
+      <div class="field"><label>Пароль</label><input type="password" name="password" required></div>
+      <button class="btn" style="width:100%;justify-content:center">Войти</button>
+    </form>
+    <p style="text-align:center;margin-top:16px;color:var(--muted);font-size:13px">
+      Ещё нет аккаунта? <a href="{{ url_for('register') }}">Зарегистрироваться</a>
+    </p>
+    <p style="text-align:center;color:var(--muted);font-size:12px">Тариф {{ plan_price }} ₽ / {{ plan_period }} · Пробный период включён</p>
+  </div>
 </div>
 {% endblock %}

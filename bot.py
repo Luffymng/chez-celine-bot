@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import json
 import logging
 
 from aiogram import Bot, Dispatcher
@@ -14,15 +16,35 @@ from reminder import reminder_loop
 logging.basicConfig(level=logging.INFO)
 
 
+def _settings_hash(restaurant: dict) -> str:
+    data = {k: v for k, v in restaurant.items() if k not in ("created_at", "updated_at")}
+    for k, v in list(data.items()):
+        if isinstance(v, bool) or v is None:
+            data[k] = str(v)
+        elif not isinstance(v, (int, float, str)):
+            data[k] = json.dumps(v, ensure_ascii=False, default=str)
+    s = json.dumps(data, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.md5(s.encode("utf-8")).hexdigest()
+
+
 async def refresh_settings_loop() -> None:
+    last_hash = None
     while True:
         try:
             restaurant = await db.get_restaurant(config.RESTAURANT_ID)
             if restaurant:
                 config.apply_settings(restaurant)
+                new_hash = _settings_hash(restaurant)
+                if new_hash != last_hash:
+                    last_hash = new_hash
+                    logging.info(
+                        "Настройки обновлены из БД: %s (id=%s)",
+                        config.RESTAURANT_NAME,
+                        config.RESTAURANT_ID,
+                    )
         except Exception:
             logging.exception("Ошибка обновления настроек")
-        await asyncio.sleep(60)
+        await asyncio.sleep(30)
 
 
 async def main() -> None:
