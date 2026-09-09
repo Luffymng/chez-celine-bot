@@ -10,3 +10,6 @@ data/*.mp4
 data/uploads/
 *.log
 webapp/cabinet.log
+
+webapp/cjadm
+/tmp/ojad*
