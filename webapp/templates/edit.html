@@ -93,7 +93,14 @@
   <div class="card">
     <h2>🔑 Админ и напоминания</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="field"><label>Токен Telegram-бота</label><input name="token" value="{{ r.token }}" placeholder="123456:ABC-DEF..."><div class="hint">Получите у @BotFather</div></div>
+      <div class="field"><label>Токен Telegram-бота</label><input name="token" value="{{ r.token }}" placeholder="123456:ABC-DEF...">
+        {% if platform_enabled and not r.token %}
+        <a class="btn grad sm" style="margin-top:8px" href="https://t.me/{{ platform_username }}?start=makebot_{{ r.id }}" target="_blank">⚡ Создать бота автоматически</a>
+        <div class="hint">Откроется Telegram: нажмите «⚡ Создать бота», придумайте имя и @username — токен впишется сам.</div>
+        {% elif not platform_enabled %}
+        <div class="hint">Авто-создание бота выключено (нет PLATFORM_BOT_TOKEN). Создайте вручную через @BotFather.</div>
+        {% endif %}
+        <div class="hint">Получите токен у @BotFather</div></div>
       <div class="field"><label>Админы (telegram id через запятую)</label><input name="admin_ids" value="{{ r.admin_ids }}" placeholder="1180896379"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -112,13 +119,19 @@
 
 <div style="align-self:start">
   <div class="card">
-    <h2>🤖 Как подключить бота</h2>
-    <ol style="margin:0;padding-left:18px;color:var(--muted);font-size:13.5px;line-height:1.8">
+    <h2>🤖 Краткий гид: создать бота</h2>
+    <ol style="margin:0;padding-left:18px;color:var(--muted);font-size:13.5px;line-height:1.9">
+      {% if platform_enabled %}
+      <li><b>Способ 1 (рекомендую):</b> нажмите <b>«⚡ Создать бота автоматически»</b> у поля токена — Telegram откроет вашего управляющего бота, нажмите в нём «⚡ Создать бота», придумайте имя и <span style="color:var(--text)">@username</span>. Токен впишется сам.</li>
+      <li><b>Способ 2 (вручную):</b> откройте <b><a href="https://t.me/BotFather" target="_blank">@BotFather</a></b> → команда <b>/newbot</b> → имя и <span style="color:var(--text)">@username</span> → скопируйте токен <span style="color:var(--text)">123456:ABC…</span> и вставьте в поле «Токен».</li>
+      {% else %}
       <li>Откройте <b><a href="https://t.me/BotFather" target="_blank">@BotFather</a></b> в Telegram</li>
-      <li>Команда <b>/newbot</b> — задайте имя и username</li>
-      <li>Скопируйте токен (вида <span style="color:var(--text)">123456:ABC…</span>)</li>
-      <li>Вставьте его в поле «Токен» слева и сохраните</li>
-      <li>Бот подхватит настройки сам — создайте себе запись администратора</li>
+      <li>Команда <b>/newbot</b> — задайте имя и <span style="color:var(--text)">@username</span></li>
+      <li>Скопируйте токен (вида <span style="color:var(--text)">123456:ABC…</span>) и вставьте его в поле «Токен» <b>на этой странице</b></li>
+      {% endif %}
+      <li>В поле «Админы» впишите свой <b>Telegram ID</b> (см. <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a>)</li>
+      <li>Включите тумблер <b>«Бот включён»</b> и нажмите <b>«Сохранить»</b></li>
+      <li>Бот начнёт работать в течение 30 секунд</li>
     </ol>
   </div>
 

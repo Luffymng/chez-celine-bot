@@ -274,7 +274,9 @@ def edit(rid: int, user):
             return redirect(url_for("edit", rid=rid))
         flash("Изменения сохранены и переданы боту", "ok")
         return redirect(url_for("edit", rid=rid))
-    return render_template("edit.html", user=user, r=restaurant)
+    return render_template("edit.html", user=user, r=restaurant,
+                           platform_enabled=bool(config.PLATFORM_BOT_TOKEN and config.PLATFORM_USERNAME),
+                           platform_username=config.PLATFORM_USERNAME)
 
 
 @app.route("/restaurant/<int:rid>/bookings")

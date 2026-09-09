@@ -19,6 +19,8 @@ ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@bot.local")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 PLAN_PRICE = int(os.getenv("PLAN_PRICE", "1500"))
 TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "7"))
+PLATFORM_BOT_TOKEN = os.getenv("PLATFORM_BOT_TOKEN", "").strip()
+PLATFORM_USERNAME = os.getenv("PLATFORM_USERNAME", "").strip()
 
 # Админы ресторана — загружаются из БД, тут только запасной вариант
 ADMIN_IDS: list[int] = [

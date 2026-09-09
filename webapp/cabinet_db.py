@@ -52,6 +52,14 @@ def ensure_schema():
             conn.execute(
                 "ALTER TABLE restaurants ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"
             )
+        col = conn.execute(
+            "SELECT 1 FROM information_schema.columns"
+            " WHERE table_name='restaurants' AND column_name='bot_request_user'"
+        ).fetchone()
+        if not col:
+            conn.execute(
+                "ALTER TABLE restaurants ADD COLUMN bot_request_user BIGINT"
+            )
         conn.execute(
             "UPDATE restaurants SET user_id = NULL WHERE user_id NOT IN "
             "(SELECT id FROM users) AND user_id IS NOT NULL"
