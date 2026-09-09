@@ -25,7 +25,7 @@ def main_menu_kb() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="🕐 Часы работы", callback_data="hours")],
         [InlineKeyboardButton(text="📞 Контакты", callback_data="contacts")],
     ]
-    if config.INSTAGRAM:
+    if config.INSTAGRAM and config.INSTAGRAM.startswith(("http://", "https://")):
         rows.append([InlineKeyboardButton(text="📷 Instagram", url=config.INSTAGRAM)])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 

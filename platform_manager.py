@@ -137,7 +137,7 @@ def handle_managed_bot(update: dict):
         row = conn.execute(
             "SELECT id, name FROM restaurants"
             " WHERE bot_request_user = %s AND (token IS NULL OR token = '')"
-            " ORDER BY id LIMIT 1",
+            " ORDER BY id DESC LIMIT 1",
             (cid,),
         ).fetchone()
     if not row:

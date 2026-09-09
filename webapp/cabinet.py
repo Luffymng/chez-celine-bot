@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import urllib.parse
 from datetime import date, datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -234,21 +235,36 @@ def edit(rid: int, user):
             val = _int(request.form.get(name))
             return restaurant[name] if val is None else val
         token = (request.form.get("token") or "").strip()
+        if request.form.get("remove_token"):
+            token = ""
+        elif not token and restaurant["token"]:
+            token = restaurant["token"]  # пустое поле — не стираем рабочий токен
         dup = cdb.get_restaurant_by_token(token, exclude_rid=rid) if token else None
         if dup:
             flash(f"Токен уже используется рестораном «{dup['name']}» (#{dup['id']}). Каждый бот — свой токен от @BotFather.", "error")
+            return redirect(url_for("edit", rid=rid))
+        bad_link = None
+        links = {}
+        for key, label in (("instagram", "Instagram"), ("telegram_link", "Telegram")):
+            v = _link(request.form.get(key))
+            if v is None:
+                bad_link = label
+                break
+            links[key] = v
+        if bad_link:
+            flash(f"Некорректный URL в поле «{bad_link}»: нужен адрес вида https://site.com/…", "error")
             return redirect(url_for("edit", rid=rid))
         try:
             cdb.update_restaurant(
                 rid,
                 name=request.form.get("name", ""),
-                token=request.form.get("token", ""),
+                token=token,
                 admin_ids=request.form.get("admin_ids", ""),
                 address=request.form.get("address", ""),
                 phone=request.form.get("phone", ""),
                 hours=request.form.get("hours", ""),
-                instagram=request.form.get("instagram", ""),
-                telegram_link=request.form.get("telegram_link", ""),
+                instagram=links["instagram"],
+                telegram_link=links["telegram_link"],
                 open_hour=nv("open_hour"),
                 close_hour=nv("close_hour"),
                 weekend_open_hour=nv("weekend_open_hour"),
@@ -379,6 +395,20 @@ def _int(value) -> int | None:
         return int(value)
     except ValueError:
         return None
+
+
+def _link(value) -> str | None:
+    """Нормализует ссылку: добавляет https:// и отсекает мусор вида
+    https://instagram/luffy. None — если URL непохож на настоящий."""
+    v = (value or "").strip()
+    if not v:
+        return ""
+    if not v.startswith(("http://", "https://")):
+        v = "https://" + v
+    host = urllib.parse.urlparse(v).netloc
+    if not host or ("." not in host and host != "localhost"):
+        return None
+    return v
 
 
 def _remove_old(prev: str):
