@@ -83,12 +83,14 @@
       </div>
     </div>
     {% if r.restaurant_photo or r.about_video or r.menu_pdf %}
-    <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-top:6px">
-      <input type="checkbox" name="remove_media" value="1"> Удалить все загруженные файлы
+    <label class="switch danger">
+      <input type="checkbox" name="remove_media" value="1">
+      <span class="track"></span> Удалить все загруженные файлы
     </label>
     {% endif %}
-    <label style="display:flex;align-items:center;gap:8px;font-weight:600">
-      <input type="checkbox" name="active" {% if r.active %}checked{% endif %}> Бот включён (принимает брони)
+    <label class="switch" style="margin-top:10px">
+      <input type="checkbox" name="active" {% if r.active %}checked{% endif %}>
+      <span class="track"></span> Бот включён (принимает брони)
     </label>
   </div>
 
