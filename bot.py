@@ -63,6 +63,12 @@ async def main() -> None:
         token=config.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
+    try:
+        me = await bot.get_me()
+    except Exception as exc:
+        logging.error("Неверный токен бота: %s", exc)
+        raise SystemExit(2)
+    logging.info("Бот подключён: @%s (тайтл: %s)", me.username, me.full_name)
     dp = Dispatcher(storage=MemoryStorage())
 
     dp.include_router(start.router)

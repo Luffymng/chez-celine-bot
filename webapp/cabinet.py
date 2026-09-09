@@ -8,10 +8,22 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import cabinet_db as cdb
 import config
 from flask import Flask, flash, redirect, render_template, request, session, url_for
+from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.security import check_password_hash, generate_password_hash
+
+PROJ_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOAD_DIR = os.path.join(PROJ_ROOT, "data", "uploads")
+UPLOAD_PREFIX = os.path.join("data", "uploads")
+ALLOWED_MEDIA = {
+    "menu_pdf": {".pdf"},
+    "restaurant_photo": {".jpg", ".jpeg", ".png", ".webp", ".gif"},
+    "about_video": {".mp4", ".mov", ".webm", ".mkv"},
+}
+MAX_UPLOAD_MB = 60
 
 app = Flask(__name__)
 app.secret_key = config.CABINET_SECRET
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -251,9 +263,9 @@ def edit(rid: int, user):
                 duration_options=request.form.get("duration_options", ""),
                 reminder_day_hours=nv("reminder_day_hours"),
                 reminder_hour_hours=nv("reminder_hour_hours"),
-                menu_pdf=request.form.get("menu_pdf", ""),
-                restaurant_photo=request.form.get("restaurant_photo", ""),
-                about_video=request.form.get("about_video", ""),
+                menu_pdf=_media_field("menu_pdf", restaurant["menu_pdf"]),
+                restaurant_photo=_media_field("restaurant_photo", restaurant["restaurant_photo"]),
+                about_video=_media_field("about_video", restaurant["about_video"]),
                 active=request.form.get("active") == "on",
             )
         except Exception:
@@ -367,6 +379,57 @@ def _int(value) -> int | None:
         return None
 
 
+def _remove_old(prev: str):
+    if not prev or not prev.startswith(UPLOAD_PREFIX):
+        return
+    p = os.path.normpath(os.path.join(PROJ_ROOT, prev))
+    if p.startswith(UPLOAD_DIR) and os.path.isfile(p):
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+        try:
+            d = os.path.dirname(p)
+            if not os.listdir(d):
+                os.rmdir(d)
+        except OSError:
+            pass
+
+
+def _save_upload(field: str) -> str | None:
+    f = request.files.get("file_" + field)
+    if not f or not f.filename:
+        return None
+    ext = os.path.splitext(f.filename)[1].lower()
+    if ext not in ALLOWED_MEDIA[field]:
+        flash(f"Файл «{os.path.basename(f.filename)}» не подходит для этого поля", "error")
+        return None
+    d = os.path.join(UPLOAD_DIR, field)
+    os.makedirs(d, exist_ok=True)
+    f.save(os.path.join(d, "file" + ext))
+    return os.path.join(UPLOAD_PREFIX, field, "file" + ext)
+
+
+def _media_field(field: str, prev: str) -> str:
+    new = _save_upload(field)
+    if new:
+        _remove_old(prev)
+        return new
+    if prev and (request.form.get("remove_media") or request.form.get("remove_" + field)):
+        _remove_old(prev)
+        return ""
+    return prev
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def _too_large(e):
+    rid = request.view_args.get("rid") if request.view_args else None
+    if rid:
+        flash(f"Файл больше {MAX_UPLOAD_MB} МБ — не загружен", "error")
+        return redirect(url_for("edit", rid=rid))
+    return redirect(url_for("index"))
+
+
 if __name__ == "__main__":
     _ensure_db()
     cdb.ensure_admin(
@@ -374,4 +437,4 @@ if __name__ == "__main__":
         generate_password_hash(config.ADMIN_PASSWORD) if config.ADMIN_PASSWORD else "",
     )
     port = int(os.getenv("PORT", "5001"))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)

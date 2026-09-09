@@ -7,4 +7,6 @@ bot.log
 venv/
 .venv/
 data/*.mp4
+data/uploads/
+*.log
 webapp/cabinet.log

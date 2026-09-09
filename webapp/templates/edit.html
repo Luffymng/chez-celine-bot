@@ -17,7 +17,7 @@
 
 <div class="grid cols-2-1">
 <div>
-<form method="post">
+<form method="post" enctype="multipart/form-data">
 
   <div class="card">
     <h2>🏷 Основное</h2>
@@ -57,10 +57,27 @@
 
   <div class="card">
     <h2>🎞 Медиа и файлы</h2>
-    <div class="hint" style="margin-bottom:10px">Пути к файлам на сервере платформы (загрузка файлов — в следующей версии).</div>
-    <div class="field"><label>Видео «О нас»</label><input name="about_video" value="{{ r.about_video }}" placeholder="data/about.mp4"></div>
-    <div class="field"><label>Фото на старт</label><input name="restaurant_photo" value="{{ r.restaurant_photo }}" placeholder="data/restaurant.jpg"></div>
-    <div class="field"><label>Меню (PDF)</label><input name="menu_pdf" value="{{ r.menu_pdf }}" placeholder="data/menu.pdf"></div>
+    <div class="hint" style="margin-bottom:10px">Загрузите файлы — бот подхватит их автоматически. Меню — PDF, фото — JPG/PNG, видео — MP4.</div>
+    <div class="field">
+      <label>Фото на старт</label>
+      <input type="file" name="file_restaurant_photo" accept="image/jpeg,image/png,image/webp,image/gif">
+      {% if r.restaurant_photo %}<div class="hint">Текущий: <code>{{ r.restaurant_photo }}</code></div>{% endif %}
+    </div>
+    <div class="field">
+      <label>Видео «О нас»</label>
+      <input type="file" name="file_about_video" accept="video/mp4,video/quicktime,video/webm">
+      {% if r.about_video %}<div class="hint">Текущий: <code>{{ r.about_video }}</code></div>{% endif %}
+    </div>
+    <div class="field">
+      <label>Меню (PDF)</label>
+      <input type="file" name="file_menu_pdf" accept=".pdf">
+      {% if r.menu_pdf %}<div class="hint">Текущий: <code>{{ r.menu_pdf }}</code></div>{% endif %}
+    </div>
+    {% if r.restaurant_photo or r.about_video or r.menu_pdf %}
+    <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-top:6px">
+      <input type="checkbox" name="remove_media" value="1"> Удалить все загруженные файлы
+    </label>
+    {% endif %}
     <label style="display:flex;align-items:center;gap:8px;font-weight:600">
       <input type="checkbox" name="active" {% if r.active %}checked{% endif %}> Бот включён (принимает брони)
     </label>
