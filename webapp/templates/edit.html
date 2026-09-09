@@ -60,18 +60,27 @@
     <div class="hint" style="margin-bottom:10px">Загрузите файлы — бот подхватит их автоматически. Меню — PDF, фото — JPG/PNG, видео — MP4.</div>
     <div class="field">
       <label>Фото на старт</label>
-      <input type="file" name="file_restaurant_photo" accept="image/jpeg,image/png,image/webp,image/gif">
-      {% if r.restaurant_photo %}<div class="hint">Текущий: <code>{{ r.restaurant_photo }}</code></div>{% endif %}
+      <div class="file">
+        <input type="file" id="f_restaurant_photo" name="file_restaurant_photo" accept="image/jpeg,image/png,image/webp,image/gif" onchange="showName(this)">
+        <label for="f_restaurant_photo" class="btn grad sm">📷 Загрузить фото</label>
+        <span class="fname">{% if r.restaurant_photo %}<code>{{ r.restaurant_photo }}</code>{% else %}файл не выбран{% endif %}</span>
+      </div>
     </div>
     <div class="field">
       <label>Видео «О нас»</label>
-      <input type="file" name="file_about_video" accept="video/mp4,video/quicktime,video/webm">
-      {% if r.about_video %}<div class="hint">Текущий: <code>{{ r.about_video }}</code></div>{% endif %}
+      <div class="file">
+        <input type="file" id="f_about_video" name="file_about_video" accept="video/mp4,video/quicktime,video/webm" onchange="showName(this)">
+        <label for="f_about_video" class="btn grad sm">🎬 Загрузить видео</label>
+        <span class="fname">{% if r.about_video %}<code>{{ r.about_video }}</code>{% else %}файл не выбран{% endif %}</span>
+      </div>
     </div>
     <div class="field">
       <label>Меню (PDF)</label>
-      <input type="file" name="file_menu_pdf" accept=".pdf">
-      {% if r.menu_pdf %}<div class="hint">Текущий: <code>{{ r.menu_pdf }}</code></div>{% endif %}
+      <div class="file">
+        <input type="file" id="f_menu_pdf" name="file_menu_pdf" accept=".pdf" onchange="showName(this)">
+        <label for="f_menu_pdf" class="btn grad sm">📄 Загрузить меню</label>
+        <span class="fname">{% if r.menu_pdf %}<code>{{ r.menu_pdf }}</code>{% else %}файл не выбран{% endif %}</span>
+      </div>
     </div>
     {% if r.restaurant_photo or r.about_video or r.menu_pdf %}
     <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-top:6px">

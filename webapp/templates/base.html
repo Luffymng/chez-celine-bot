@@ -75,6 +75,14 @@
   .field input[type=checkbox]{width:auto}
   .hint{font-size:12px;color:var(--muted);margin-top:4px}
 
+  /* ---------- file upload ---------- */
+  .file{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px dashed var(--line2);border-radius:12px;background:#fafbff}
+  .file input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+  .file label{flex-shrink:0;cursor:pointer}
+  .file .fname{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .file .fname b{color:var(--green);font-weight:600}
+  .file .fname code{color:var(--text)}
+
   /* ---------- table ---------- */
   table{width:100%;border-collapse:collapse;font-size:13.5px}
   th{color:var(--muted);font-weight:600;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border-bottom:1px solid var(--line2)}
@@ -165,5 +173,21 @@
   </main>
 </div>
 {% endblock %}
+<script>
+function showName(input){
+  var fname = input.closest('.file').querySelector('.fname');
+  if (input.files && input.files.length) {
+    fname.innerHTML = '<b>✓ ' + input.files[0].name + '</b>';
+  } else if (fname.dataset.orig) {
+    fname.innerHTML = fname.dataset.orig;
+  }
+}
+window.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('.file .fname').forEach(function(el){
+    if (el.dataset.orig) return;
+    el.dataset.orig = el.innerHTML;
+  });
+});
+</script>
 </body>
 </html>
