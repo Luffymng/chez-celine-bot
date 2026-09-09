@@ -88,10 +88,6 @@
       <span class="track"></span> Удалить все загруженные файлы
     </label>
     {% endif %}
-    <label class="switch" style="margin-top:10px">
-      <input type="checkbox" name="active" {% if r.active %}checked{% endif %}>
-      <span class="track"></span> Бот включён (принимает брони)
-    </label>
   </div>
 
   <div class="card">
@@ -104,6 +100,10 @@
       <div class="field"><label>Напомнить за (часов до даты)</label><input name="reminder_day_hours" type="number" value="{{ r.reminder_day_hours }}"></div>
       <div class="field"><label>Напомнить за (часов до времени)</label><input name="reminder_hour_hours" type="number" value="{{ r.reminder_hour_hours }}"></div>
     </div>
+    <label class="switch" style="margin-top:10px">
+      <input type="checkbox" name="active" {% if r.active %}checked{% endif %}>
+      <span class="track"></span> Бот включён (принимает брони)
+    </label>
   </div>
 
   <button class="btn grad" style="width:100%;padding:13px;font-size:15px">Сохранить и отправить боту</button>
