@@ -1,6 +1,7 @@
-"""Супервизор ботов: по одному процессу bot.py на каждый ресторан с токеном.
+"""Супервизор: боты ресторанов + управляющий бот платформы.
 
-Поднимает/гасит/перезапускает ботов по состоянию БД (restaurants.token, active).
+Один bot.py на каждый ресторан с токеном (restaurants.token, active).
+Плюс один platform_manager.py, если задан PLATFORM_BOT_TOKEN.
 Запуск: python supervisor.py
 """
 import logging
@@ -105,9 +106,69 @@ class BotProcess:
         self.proc = None
 
 
+class PlatformProcess:
+    """Управляющий бот (создание ботов для ресторанов)."""
+
+    SCRIPT = "platform_manager.py"
+    LOG = os.path.join(BASE_DIR, "platform.log")
+
+    def __init__(self):
+        self.proc = None
+        self.last_start = 0
+        self.rapid = 0
+
+    def start(self):
+        log = open(self.LOG, "a")
+        self.proc = subprocess.Popen(
+            [sys.executable, self.SCRIPT],
+            cwd=BASE_DIR,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+        )
+        self.last_start = time.time()
+        self.rapid += 1
+        logging.info("Запущен управляющий бот pid=%s log=%s", self.proc.pid, self.LOG)
+
+    def check(self):
+        if self.proc is None:
+            return
+        code = self.proc.poll()
+        if code is None:
+            return
+        logging.warning("Управляющий бот вышел с кодом %s", code)
+        self.proc = None
+
+    def restart_if_needed(self):
+        if self.proc is not None:
+            return
+        if time.time() - self.last_start < 15:
+            return
+        if self.rapid >= 5:
+            logging.warning("Управляющий бот падает при старте, пауза 5 минут")
+            if time.time() - self.last_start < 300:
+                return
+            self.rapid = 0
+        self.start()
+
+    def stop(self):
+        if self.proc is not None:
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+            logging.info("Остановлен управляющий бот")
+        self.proc = None
+
+
 def main():
     processes = {}
-    logging.info("Супервизор запущен (интервал %ss)", CHECK_INTERVAL)
+    platform = PlatformProcess() if config.PLATFORM_BOT_TOKEN else None
+    logging.info(
+        "Супервизор запущен (интервал %ss, платформенный бот: %s)",
+        CHECK_INTERVAL,
+        "да" if platform else "нет",
+    )
     try:
         while True:
             try:
@@ -143,12 +204,19 @@ def main():
                 bp.check()
                 bp.restart_if_needed()
 
+            # Платформенный бот
+            if platform is not None:
+                platform.check()
+                platform.restart_if_needed()
+
             time.sleep(CHECK_INTERVAL)
     except KeyboardInterrupt:
         pass
     finally:
         for bp in processes.values():
             bp.stop()
+        if platform is not None:
+            platform.stop()
         logging.info("Супервизор остановлен")
 
 

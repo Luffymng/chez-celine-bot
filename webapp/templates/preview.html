@@ -3,35 +3,290 @@
 {% block pagetitle %}Превью бота{% endblock %}
 {% block content %}
 
-<div class="card" style="max-width:560px;margin:0 auto">
-  <h2 style="text-align:center">Экран гостя</h2>
-  <div class="phone">
-    <div class="screen">
-      <div class="bubble" style="flex-shrink:0"><b>{{ r.name }}</b>
-{{ r.address or 'г. Минск' }}
-{{ r.hours or '' }}</div>
-      <div class="me">Забронировать столик 😉</div>
-      <div class="kb">
-        <div class="btn grad">🍽 Забронировать столик</div>
-        <div class="btn gray">📋 Мои брони</div>
-        <div class="btn gray">📖 Меню</div>
-        <div class="btn gray">ℹ️ О нас</div>
-        <div class="btn gray">🕐 Часы работы</div>
-        <div class="btn gray">📞 Контакты</div>
-        {% if r.instagram %}<div class="btn gray">📷 Instagram</div>{% endif %}
+<div class="grid cols-2-1">
+  <div style="align-self:start">
+    <div class="card">
+      <h2 style="display:flex;align-items:center;gap:10px">👤 Как это видит гость
+        <button class="btn gray sm" style="margin-left:auto" onclick="location.reload()">Перезапустить</button>
+      </h2>
+      <div class="phone" style="width:100%;max-width:340px">
+        <div class="screen" style="height:560px">
+          <div class="preview-head">{{ r.name }}</div>
+          <div id="chat"></div>
+          <div id="kb"></div>
+        </div>
       </div>
+      <p style="text-align:center;color:var(--muted);font-size:12px;margin:10px 0 0">
+        Симуляция повторяет реальный бот шаг за шагом: {{ r.open_hour or 12 }}:00–{{ r.close_hour or 23 }}:00, шаг слотов {{ r.slot_minutes or 30 }} мин.
+      </p>
     </div>
   </div>
 
-  {% if r.token %}
-  <div class="flash ok" style="margin:18px 0 0">Бот подключён (токен введён). Найдите его в Telegram и отправьте /start.</div>
-  {% else %}
-  <div class="flash error" style="margin:18px 0 0">Токен ещё не вставлен — сделайте это в настройках, чтобы бот заработал.</div>
-  {% endif %}
-
-  <p style="text-align:center;margin-top:14px">
-    <a class="btn gray sm" href="{{ url_for('edit', rid=r.id) }}">← К настройкам</a>
-  </p>
+  <div style="align-self:start">
+    <div class="card">
+      <h2>💡 Что смотрит владелец</h2>
+      <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:13.5px;line-height:1.8">
+        <li>Календарь: сегодняшние дни закрыты «•»</li>
+        <li>Время считается по настройкам часов (в выходные по отдельным часам)</li>
+        <li>Лимит гостей и длительности берутся из конструктора</li>
+        <li>В конце — сводка брони как после ввода номера</li>
+      </ul>
+    </div>
+    <div class="card">
+      <a class="btn green sm" style="width:100%;justify-content:center" href="{{ url_for('edit', rid=r.id) }}">⚙️ В настройки</a>
+    </div>
+  </div>
 </div>
+
+<script>
+const R = {
+  name: {{ r.name|tojson }},
+  address: {{ (r.address or '')|tojson }},
+  phone: {{ (r.phone or '')|tojson }},
+  hours: {{ (r.hours or '')|tojson }},
+  instagram: {{ (r.instagram or '')|tojson }},
+  telegram_link: {{ (r.telegram_link or '')|tojson }},
+  open_hour: {{ r.open_hour or 12 }},
+  close_hour: {{ r.close_hour or 23 }},
+  weekend_open_hour: {{ r.weekend_open_hour or 10 }},
+  weekend_close_hour: {{ r.weekend_close_hour or 23 }},
+  slot_minutes: {{ r.slot_minutes or 30 }},
+  min_guests: {{ r.min_guests or 1 }},
+  max_guests: {{ r.max_guests or 8 }},
+  durations: {{ (r.duration_options or '60,90,120,150,180')|tojson }},
+  table_capacity: {{ r.table_capacity or 4 }},
+  menu: {{ (r.menu_pdf or '')|tojson }},
+};
+R.durations = R.durations.split(',').map(x => parseInt(x, 10)).filter(x => x);
+
+const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+
+const chat = document.getElementById('chat');
+const kbBox = document.getElementById('kb');
+let state = {};
+let view = { year: new Date().getFullYear(), month: new Date().getMonth() };
+
+function fmtDate(iso){ const d = new Date(iso + 'T12:00:00'); return d.toLocaleDateString('ru-RU', {weekday:'long', day:'numeric', month:'long'}).replace(/^([а-яё])/, s => s.toUpperCase()); }
+function fmtDur(m){ return m % 60 === 0 ? (m/60) + ' ч' : (m/60).toFixed(1).replace('.', ',') + ' ч'; }
+
+function bubble(text, me){
+  const el = document.createElement('div');
+  el.className = me ? 'me' : 'bubble';
+  el.innerHTML = text;
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+}
+function guest(text){ bubble(text, true); }
+
+function kb(rows){
+  kbBox.innerHTML = '';
+  rows.forEach(row => {
+    const div = document.createElement('div');
+    div.className = 'kb-row';
+    row.forEach(b => {
+      const btn = document.createElement('span');
+      btn.className = 'btn ' + (b.danger ? 'red' : (b.primary ? 'grad' : 'gray'));
+      btn.textContent = b.text;
+      btn.onclick = () => { guest(b.text); b.onclick(); };
+      div.appendChild(btn);
+    });
+    kbBox.appendChild(div);
+  });
+}
+function emptyKb(){ kbBox.innerHTML = ''; }
+
+function ask(text, rows){ bubble(text, false); kb(rows); }
+function gotoMain(){ ask('<b>' + (R.name || 'Ресторан') + '</b><br>' + (R.address || ''), mainButtons()); }
+
+function mainButtons(){
+  const rows = [];
+  const mk = b => ({ text: b.text, primary: b.primary, danger: b.danger, onclick: b.onclick });
+  rows.push([mk({text:'🍽 Забронировать столик', primary:true, onclick:stepCalendar})]);
+  rows.push([mk({text:'📋 Мои брони', onclick:showMine})]);
+  rows.push([mk({text:'📖 Меню', onclick:showMenu})]);
+  rows.push([mk({text:'ℹ️ О нас', onclick:function(){ show('О нас', R.name ? 'Мы всегда рады гостям!' : 'Информация появится после заполнения настроек.') }})]);
+  rows.push([mk({text:'🕐 Часы работы', onclick:function(){ show('Часы работы', R.hours || 'Часы не заполнены') }})]);
+  rows.push([mk({text:'📞 Контакты', onclick:showContacts})]);
+  if (R.instagram) rows.push([mk({text:'📷 Instagram', onclick:function(){ guest('Открываю Instagram…'); gotoMain(); }})]);
+  return rows;
+}
+function show(title, text){ ask('ℹ️ <b>' + title + '</b><br>' + (text || ''), [[{text:'↩️ В меню', onclick:gotoMain}]]); }
+function showMine(){ show('Мои брони', 'У вас пока нет активных броней. Нажмите «🍽 Забронировать столик», чтобы оставить заявку.'); }
+function showMenu(){
+  if (R.menu) { guest('📖 Меню'); bubble('📖 <b>Меню «' + R.name + '»</b><br><span style="opacity:.6">(файл PDF)</span>', false); kb([[{text:'↩️ В меню', onclick:gotoMain}]]); }
+  else show('Меню', 'Меню скоро появится. Добавьте PDF в «🎞 Медиа и файлы».');
+}
+function showContacts(){
+  const lines = [];
+  if (R.address) lines.push('📍 ' + R.address);
+  if (R.phone) lines.push('📞 ' + R.phone);
+  if (R.hours) lines.push('🕐 ' + R.hours);
+  if (R.telegram_link) lines.push('✈️ <a href="' + R.telegram_link + '">Telegram</a>');
+  if (R.instagram) lines.push('📷 <a href="' + R.instagram + '">Instagram</a>');
+  show('Контакты', lines.join('<br>') || 'Заполните контакты в настройках');
+}
+
+/* --- Шаг 1: дата --- */
+function slotsFor(iso){
+  const d = new Date(iso + 'T12:00:00');
+  const wd = d.getDay();
+  const weekend = (wd === 0 || wd === 6);
+  const o = weekend ? R.weekend_open_hour : R.open_hour;
+  const c = weekend ? R.weekend_close_hour : R.close_hour;
+  const today = (d.toDateString() === new Date().toDateString());
+  const now = new Date();
+  const out = [];
+  const push = (h, m) => {
+    if (today) { const slot = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m); if (slot <= now) return; }
+    out.push(('0'+h).slice(-2) + ':' + ('0'+m).slice(-2));
+  };
+  if (o < c)  { for (let h=o; h<c; h++) for (let m=0;m<60;m+=R.slot_minutes) push(h,m); }
+  else        { for (let h=o; h<24; h++) for (let m=0;m<60;m+=R.slot_minutes) push(h,m);
+                for (let h=0; h<c; h++)  for (let m=0;m<60;m+=R.slot_minutes) push(h,m); }
+  return out;
+}
+function stepCalendar(){
+  const darows = [['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(x => ({text: x, onclick: ()=>{}}))];
+  const first = new Date(view.year, view.month, 1);
+  const lead = (first.getDay() + 6) % 7;
+  const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
+  const today0 = new Date(); today0.setHours(0,0,0,0);
+  let row = [], dayN = 1;
+  for (let i=0; i<lead; i++) row.push({text:' ', onclick:()=>{}});
+  for (let d=1; d<=daysInMonth; d++) {
+    const iso = view.year + '-' + ('0'+(view.month+1)).slice(-2) + '-' + ('0'+d).slice(-2);
+    const dt = new Date(view.year, view.month, d);
+    row.push({ text: dt < today0 ? '•' : String(d), onclick: dt < today0 ? ()=>{} : () => { state.date = iso; stepGuests(); } });
+    if (row.length === 7) { darows.push(row); row = []; }
+  }
+  if (row.length) darows.push(row);
+  const prev = view.month === 0 ? {y: view.year-1, m: 11} : {y: view.year, m: view.month-1};
+  const next_ = view.month === 11 ? {y: view.year+1, m: 0} : {y: view.year, m: view.month+1};
+  const navRow = [
+    {text:'◀️', onclick:()=>{view = prev; stepCalendar();}},
+    {text:'Сегодня', onclick:()=>{const n=new Date(); view={year:n.getFullYear(),month:n.getMonth()}; stepCalendar();}},
+    {text:'▶️', onclick:()=>{view = next_; stepCalendar();}},
+  ];
+  const cancel = {text:'❌ Отмена', onclick:gotoMain};
+  ask('📅 <b>Шаг 1 из 7</b> — ' + MONTHS[view.month] + ' ' + view.year + ':', [darows[0], ...darows.slice(1), navRow, [cancel]]);
+}
+
+/* --- Шаг 2: гости --- */
+function stepGuests(){
+  const rows = [];
+  let row = [];
+  for (let n=1; n<=R.max_guests; n++) {
+    row.push({text: n + ' 👤', onclick: () => { state.guests = n; stepDuration(); }});
+    if (row.length === 4) { rows.push(row); row = []; }
+  }
+  if (row.length) rows.push(row);
+  rows.push([{text:'❌ Отмена', onclick:gotoMain}]);
+  ask('👥 <b>Шаг 2 из 7</b> — сколько гостей будет за столом?', rows);
+}
+
+/* --- Шаг 3: длительность --- */
+function stepDuration(){
+  const rows = [];
+  let row = [];
+  R.durations.forEach((m) => {
+    row.push({text: fmtDur(m), onclick: () => { state.duration = m; stepTime(); }});
+    if (row.length === 3) { rows.push(row); row = []; }
+  });
+  if (row.length) rows.push(row);
+  rows.push([{text:'❌ Отмена', onclick:gotoMain}]);
+  ask('⏳ <b>Шаг 3 из 7</b> — сколько времени планируете у нас провести?', rows);
+}
+
+/* --- Шаг 4: время --- */
+function stepTime(){
+  const slots = slotsFor(state.date);
+  const rows = [];
+  let row = [];
+  slots.forEach(s => {
+    row.push({text: s, onclick: () => { state.time = s; stepName(); }});
+    if (row.length === 4) { rows.push(row); row = []; }
+  });
+  if (row.length) rows.push(row);
+  if (!rows.length) { ask('😔 На эту дату слотов нет — выберите другую.', [[{text:'↩️ В меню', onclick:gotoMain}]]); return; }
+  rows.push([{text:'❌ Отмена', onclick:gotoMain}]);
+  ask('🕐 <b>Шаг 4 из 7</b> — выберите время:', rows);
+}
+
+/* --- Шаг 5-7: имя / телефон / комментарий (миниклав-инпут) --- */
+function inputStep(title, placeholder, cb){
+  ask(title, []);
+  const wrap = document.createElement('div');
+  wrap.className = 'kb-row input-kb';
+  const inp = document.createElement('input');
+  inp.placeholder = placeholder;
+  const go = document.createElement('span');
+  go.className = 'btn grad';
+  go.textContent = 'Отправить ➡️';
+  go.onclick = () => { if (!inp.value.trim()) return; guest(inp.value.trim()); cb(inp.value.trim()); };
+  inp.onkeydown = (e) => { if (e.key === 'Enter') go.onclick(); };
+  wrap.appendChild(inp); wrap.appendChild(go);
+  kbBox.appendChild(wrap);
+}
+function stepName(){ inputStep('👤 <b>Шаг 5 из 7</b> — как к вам обращаться?<br><span style="opacity:.6">Введите имя</span>', 'Ваше имя', v => { state.name = v; stepPhone(); }); }
+function stepPhone(){
+  inputStep('📞 <b>Шаг 6 из 7</b> — поделитесь номером телефона<br><span style="opacity:.6">Введите номер</span>', '+375 29 123-45-67', v => { state.phone = v; stepComment(); });
+}
+function stepComment(){
+  const rows = [[{text:'Пропустить ➡️', onclick: () => { state.comment = null; showConfirm(); }}]];
+  ask('💬 <b>Шаг 7 из 7</b> — оставьте комментарий (необязательно)<br><span style="opacity:.6">Например: детское кресло, юбилей</span>', [rows[0]]);
+  const wrap = document.createElement('div');
+  wrap.className = 'kb-row input-kb';
+  const inp = document.createElement('input'); inp.placeholder = 'Комментарий';
+  const go = document.createElement('span'); go.className = 'btn grad'; go.textContent = 'Отправить ➡️';
+  go.onclick = () => { if (!inp.value.trim()) return; guest(inp.value.trim()); state.comment = inp.value.trim(); showConfirm(); };
+  inp.onkeydown = (e) => { if (e.key === 'Enter') go.onclick(); };
+  wrap.appendChild(inp); wrap.appendChild(go);
+  kbBox.appendChild(wrap);
+}
+
+/* --- Подтверждение --- */
+function showConfirm(){
+  const small = state.guests <= (R.table_capacity || 4);
+  const table = small ? '🪑 Стол: 4-местный' : '🪑 Стол: большой (на 5–' + R.max_guests + ' чел.)';
+  let text = '📝 <b>Проверьте бронь:</b><br><br>' +
+    '📅 ' + fmtDate(state.date) + ' в ' + state.time + '<br>' +
+    '⏳ На ' + fmtDur(state.duration) + '<br>' +
+    '👥 Гостей: ' + state.guests + '<br>' + table + '<br>' +
+    '👤 ' + state.name + '<br>' + '📞 ' + state.phone;
+  if (state.comment) text += '<br>💬 ' + state.comment;
+  text += '<br><br>Всё верно?';
+  ask(text, [
+    [{text:'✅ Подтвердить', primary:true, onclick:confirmBooking}],
+    [{text:'✏️ Изменить', onclick:stepCalendar}],
+    [{text:'❌ Отменить', onclick:gotoMain}],
+  ]);
+}
+function confirmBooking(){
+  emptyKb();
+  guest('✅ Подтвердить');
+  const id = '' + (1000 + Math.floor(Math.random() * 9000));
+  let text = '🎉 <b>Заявка отправлена!</b><br><br>' +
+    'Ваша бронь №' + id + ': ' + fmtDate(state.date) + ' в ' + state.time + ', ' +
+    'на ' + fmtDur(state.duration) + ', ' + state.guests + ' чел.<br><br>' +
+    'Мы свяжемся с вами для подтверждения.<br><br>' +
+    'Вопросы? Звоните: ' + (R.phone || '—');
+  bubble(text, false);
+  setTimeout(gotoMain, 900);
+}
+
+gotoMain();
+</script>
+
+<style>
+.preview-head{flex-shrink:0;font-weight:700;font-size:13px;text-align:center;padding:4px 0 8px;border-bottom:1px solid #eef;margin-bottom:6px}
+#chat{flex:1;display:flex;flex-direction:column;gap:8px;overflow-y:auto;min-height:0;padding:2px}
+#chat .bubble,#chat .me{max-width:85%;padding:9px 11px;font-size:12px;white-space:normal;line-height:1.5}
+#chat .me{align-self:flex-end}
+#kb{flex-shrink:0;padding-top:8px;display:flex;flex-direction:column;gap:6px}
+.kb-row{display:flex;gap:6px;flex-wrap:wrap}
+.kb-row .btn{flex:1 1 auto;text-align:center;padding:8px 6px;font-size:11.5px;border-radius:8px}
+.input-kb input{flex:1;border:1px solid #dfe3ef;border-radius:8px;padding:7px 9px;font-size:12px;min-width:0}
+.input-kb .btn{flex-shrink:0}
+</style>
 
 {% endblock %}

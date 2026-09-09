@@ -41,12 +41,12 @@ def _conn():
     return psycopg.connect(config.DATABASE_URL, row_factory=dict_row)
 
 
-def tg(method: str, params: dict | None = None) -> dict:
+def tg(method: str, params: dict | None = None, timeout: float = 60) -> dict:
     url = API + config.PLATFORM_BOT_TOKEN + "/" + method
     data = json.dumps(params or {}).encode()
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = json.load(resp)
     except urllib.error.HTTPError as e:
         body = json.loads(e.read() or b"{}")
@@ -74,8 +74,8 @@ def handle_message(msg: dict):
         return
     m = re.match(r"^/start\s+(makebot_\d+)$", text.strip()) if text else None
     if not m:
-        text_preview = (text or "").splitlines()[0][:60]
-        if text.startswith("/start"):
+        text_preview = (text or "").splitlines()[0][:60] if text else ""
+        if (text or "").startswith("/start"):
             tg("sendMessage", {
                 "chat_id": chat["id"],
                 "text": "Привет! Кнопку «Создать бота» нужно нажимать из кабинета БотКонструктора.",
@@ -172,6 +172,8 @@ def main():
         logging.error("PLATFORM_BOT_TOKEN не задан — управляющий бот не запущен")
         return
     offset = None
+    updates_seen = 0
+    last_heartbeat = 0.0
     logging.info("Управляющий бот запущен (%s)", config.PLATFORM_USERNAME or config.PLATFORM_BOT_TOKEN[:10])
     while True:
         try:
@@ -179,6 +181,13 @@ def main():
             if offset is not None:
                 params["offset"] = offset
             result = tg("getUpdates", params)["result"]
+            updates_seen += len(result)
+            if time.time() - last_heartbeat >= 600:
+                last_heartbeat = time.time()
+                logging.info(
+                    "getUpdates ok (offset=%s, всего обработано обновлений: %s)",
+                    offset, updates_seen,
+                )
             for update in result:
                 offset = update["update_id"] + 1
                 try:
