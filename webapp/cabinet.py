@@ -212,45 +212,56 @@ def dashboard(rid: int, user):
 @_subscribed_required
 def edit(rid: int, user):
     _ensure_db()
-    if request.method == "POST":
-        if not _can_r(user, rid):
-            flash("Доступ запрещён", "error")
-            return redirect(url_for("index"))
-        cdb.update_restaurant(
-            rid,
-            name=request.form.get("name", ""),
-            token=request.form.get("token", ""),
-            admin_ids=request.form.get("admin_ids", ""),
-            address=request.form.get("address", ""),
-            phone=request.form.get("phone", ""),
-            hours=request.form.get("hours", ""),
-            instagram=request.form.get("instagram", ""),
-            telegram_link=request.form.get("telegram_link", ""),
-            open_hour=_int(request.form.get("open_hour")),
-            close_hour=_int(request.form.get("close_hour")),
-            weekend_open_hour=_int(request.form.get("weekend_open_hour")),
-            weekend_close_hour=_int(request.form.get("weekend_close_hour")),
-            slot_minutes=_int(request.form.get("slot_minutes")),
-            min_guests=_int(request.form.get("min_guests")),
-            max_guests=_int(request.form.get("max_guests")),
-            table_capacity=_int(request.form.get("table_capacity")),
-            default_tables=_int(request.form.get("default_tables")),
-            min_tables=_int(request.form.get("min_tables")),
-            max_tables=_int(request.form.get("max_tables")),
-            duration_options=request.form.get("duration_options", ""),
-            reminder_day_hours=_int(request.form.get("reminder_day_hours")),
-            reminder_hour_hours=_int(request.form.get("reminder_hour_hours")),
-            menu_pdf=request.form.get("menu_pdf", ""),
-            restaurant_photo=request.form.get("restaurant_photo", ""),
-            about_video=request.form.get("about_video", ""),
-            active=request.form.get("active") == "on",
-        )
-        flash("Изменения сохранены и переданы боту", "ok")
-        return redirect(url_for("edit", rid=rid))
     if not _can_r(user, rid):
         flash("Доступ запрещён", "error")
         return redirect(url_for("index"))
     restaurant = cdb.get_restaurant(rid, user["id"], user.get("is_admin"))
+    if request.method == "POST":
+        def nv(name):
+            """Пустое число -> сохранить прежнее значение (не NULL)."""
+            val = _int(request.form.get(name))
+            return restaurant[name] if val is None else val
+        token = (request.form.get("token") or "").strip()
+        dup = cdb.get_restaurant_by_token(token, exclude_rid=rid) if token else None
+        if dup:
+            flash(f"Токен уже используется рестораном «{dup['name']}» (#{dup['id']}). Каждый бот — свой токен от @BotFather.", "error")
+            return redirect(url_for("edit", rid=rid))
+        try:
+            cdb.update_restaurant(
+                rid,
+                name=request.form.get("name", ""),
+                token=request.form.get("token", ""),
+                admin_ids=request.form.get("admin_ids", ""),
+                address=request.form.get("address", ""),
+                phone=request.form.get("phone", ""),
+                hours=request.form.get("hours", ""),
+                instagram=request.form.get("instagram", ""),
+                telegram_link=request.form.get("telegram_link", ""),
+                open_hour=nv("open_hour"),
+                close_hour=nv("close_hour"),
+                weekend_open_hour=nv("weekend_open_hour"),
+                weekend_close_hour=nv("weekend_close_hour"),
+                slot_minutes=nv("slot_minutes"),
+                min_guests=nv("min_guests"),
+                max_guests=nv("max_guests"),
+                table_capacity=nv("table_capacity"),
+                default_tables=nv("default_tables"),
+                min_tables=nv("min_tables"),
+                max_tables=nv("max_tables"),
+                duration_options=request.form.get("duration_options", ""),
+                reminder_day_hours=nv("reminder_day_hours"),
+                reminder_hour_hours=nv("reminder_hour_hours"),
+                menu_pdf=request.form.get("menu_pdf", ""),
+                restaurant_photo=request.form.get("restaurant_photo", ""),
+                about_video=request.form.get("about_video", ""),
+                active=request.form.get("active") == "on",
+            )
+        except Exception:
+            app.logger.exception("Ошибка сохранения")
+            flash("Не удалось сохранить: проверьте заполнение полей", "error")
+            return redirect(url_for("edit", rid=rid))
+        flash("Изменения сохранены и переданы боту", "ok")
+        return redirect(url_for("edit", rid=rid))
     return render_template("edit.html", user=user, r=restaurant)
 
 

@@ -151,12 +151,26 @@ def create_restaurant(name: str, user_id: int | None = None):
 
 def update_restaurant(rid: int, **fields):
     fields = {k: v for k, v in fields.items() if k in ALLOWED_COLUMNS}
+    if "token" in fields and not (fields["token"] or "").strip():
+        fields["token"] = None
     if not fields:
         return
     sets = ", ".join(f"{k} = %s" for k in fields)
     values = list(fields.values()) + [rid]
     with _conn() as conn:
         conn.execute(f"UPDATE restaurants SET {sets} WHERE id = %s", values)
+
+
+def get_restaurant_by_token(token: str, exclude_rid: int | None = None):
+    with _conn() as conn:
+        if exclude_rid is not None:
+            return conn.execute(
+                "SELECT id, name FROM restaurants WHERE token = %s AND id != %s",
+                (token, exclude_rid),
+            ).fetchone()
+        return conn.execute(
+            "SELECT id, name FROM restaurants WHERE token = %s", (token,)
+        ).fetchone()
 
 
 def list_bookings(rid: int, status: str | None = None, on_date: str | None = None,
