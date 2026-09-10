@@ -130,18 +130,11 @@
     <h2>🔑 Админ и напоминания</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="field"><label>Токен Telegram-бота</label><input name="token" value="{{ r.token }}" placeholder="123456:ABC-DEF...">
-        {% if platform_enabled and not r.token %}
-        <a class="btn grad sm" style="margin-top:8px" href="https://t.me/{{ platform_username }}?start=makebot_{{ r.id }}" target="_blank">⚡ Создать бота автоматически</a>
-        <div class="hint">Откроется Telegram: нажмите «⚡ Создать бота», придумайте имя и @username — токен впишется сам.</div>
-        {% elif not platform_enabled %}
-        <div class="hint">Авто-создание бота выключено (нет PLATFORM_BOT_TOKEN). Создайте вручную через @BotFather.</div>
-        {% endif %}
-        <div class="hint">Получите токен у @BotFather</div>
-        {% if r.token %}
-        <label class="switch danger" style="margin-top:8px">
-          <input type="checkbox" name="remove_token" value="1">
-          <span class="track"></span> Удалить токен (бот перестанет отвечать)
-        </label>
+        {% if platform_enabled %}
+        <a class="btn grad sm" style="margin-top:8px" href="https://t.me/{{ platform_username }}?start=makebot_{{ r.id }}" target="_blank">⚡ {{ 'Создать нового бота и заменить токен' if r.token else 'Создать бота автоматически' }}</a>
+        <div class="hint">Откроется Telegram-бот: нажмите «⚡ Создать бота», придумайте имя и @username — токен впишется сам{% if r.token %} (текущий бот будет заменён новым){% endif %}.</div>
+        {% else %}
+        <div class="hint">Авто-создание выключено (нет PLATFORM_BOT_TOKEN). Создайте вручную через <a href="https://t.me/BotFather" target="_blank">@BotFather</a>.</div>
         {% endif %}</div>
       <div class="field"><label>Админы (telegram id через запятую)</label><input name="admin_ids" value="{{ r.admin_ids }}" placeholder="1180896379"></div>
     </div>

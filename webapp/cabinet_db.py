@@ -41,8 +41,23 @@ def ensure_schema():
                 name TEXT NOT NULL DEFAULT '',
                 status TEXT NOT NULL DEFAULT 'trial',
                 trial_ends_at DATE,
+                paid_until DATE,
                 is_admin BOOLEAN NOT NULL DEFAULT false,
                 created_at TIMESTAMP NOT NULL DEFAULT now()
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS payments (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                amount INTEGER NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'RUB',
+                method TEXT NOT NULL DEFAULT 'card',
+                months INTEGER NOT NULL DEFAULT 1,
+                status TEXT NOT NULL DEFAULT 'pending',
+                until_date DATE,
+                created_at TIMESTAMP NOT NULL DEFAULT now(),
+                paid_at TIMESTAMP
             )
         """)
         col = conn.execute(
@@ -61,6 +76,12 @@ def ensure_schema():
             conn.execute(
                 "ALTER TABLE restaurants ADD COLUMN bot_request_user BIGINT"
             )
+        col = conn.execute(
+            "SELECT 1 FROM information_schema.columns"
+            " WHERE table_name='users' AND column_name='paid_until'"
+        ).fetchone()
+        if not col:
+            conn.execute("ALTER TABLE users ADD COLUMN paid_until DATE")
         for column, ddl in (
             ("bot_type", "ALTER TABLE restaurants ADD COLUMN bot_type TEXT NOT NULL DEFAULT 'restaurant'"),
             ("services_txt", "ALTER TABLE restaurants ADD COLUMN services_txt TEXT NOT NULL DEFAULT ''"),
@@ -113,6 +134,52 @@ def set_user_status(user_id: int, status: str):
 def set_user_admin(user_id: int, is_admin: bool):
     with _conn() as conn:
         conn.execute("UPDATE users SET is_admin = %s WHERE id = %s", (is_admin, user_id))
+
+
+def set_user_paid(user_id: int, until_date: date):
+    with _conn() as conn:
+        conn.execute(
+            "UPDATE users SET status = 'active', paid_until = %s WHERE id = %s",
+            (until_date, user_id),
+        )
+
+
+# === Оплаты ===
+
+def create_payment(user_id: int, amount: int, method: str, months: int,
+                   status: str = "pending", until_date: date | None = None) -> int:
+    with _conn() as conn:
+        return conn.execute(
+            "INSERT INTO payments (user_id, amount, method, months, status, until_date)"
+            " VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+            (user_id, amount, method, months, status, until_date),
+        ).fetchone()["id"]
+
+
+def get_payments(user_id: int, limit: int = 20) -> list[dict]:
+    with _conn() as conn:
+        return conn.execute(
+            "SELECT * FROM payments WHERE user_id = %s ORDER BY id DESC LIMIT %s",
+            (user_id, limit),
+        ).fetchall()
+
+
+def get_last_pending_payment(user_id: int) -> dict | None:
+    with _conn() as conn:
+        return conn.execute(
+            "SELECT * FROM payments WHERE user_id = %s AND status = 'pending'"
+            " ORDER BY id DESC LIMIT 1",
+            (user_id,),
+        ).fetchone()
+
+
+def mark_paid(payment_id: int, until_date: date):
+    with _conn() as conn:
+        conn.execute(
+            "UPDATE payments SET status = 'paid', paid_at = now(), until_date = %s"
+            " WHERE id = %s",
+            (until_date, payment_id),
+        )
 
 
 def ensure_admin(email: str, password_hash: str) -> int | None:

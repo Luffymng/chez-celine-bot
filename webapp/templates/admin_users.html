@@ -7,7 +7,7 @@
   <div class="table-scroll"><table>
     <tr>
       <th>ID</th><th>Имя</th><th>E-mail</th><th>Статус</th><th>Триал до</th>
-      <th>Боты</th><th>Создан</th><th></th>
+      <th>Оплачен до</th><th>Боты</th><th>Создан</th><th></th>
     </tr>
     {% for u in users %}
     <tr>
@@ -18,6 +18,7 @@
         {{ status_labels[u.status] }}
       </span></td>
       <td>{{ u.trial_ends_at or '—' }}{% if u.status=='trial' and u.trial_ends_at and u.trial_ends_at < today %} <span style="color:var(--red)">(истёк)</span>{% endif %}</td>
+      <td>{{ u.paid_until or '—' }}{% if u.status=='active' and u.paid_until and u.paid_until < today %} <span style="color:var(--red)">(истёк)</span>{% endif %}</td>
       <td>
         {% for b in u.get('_bots') or [] %}
           <span class="pill gray">{{ b.name }}{% if not b.active %} ✕{% endif %}</span>

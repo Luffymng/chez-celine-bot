@@ -131,15 +131,22 @@ def handle_managed_bot(update: dict):
     new_bot = mb.get("bot") or {}
     cid = creator.get("id")
     new_id = new_bot.get("id")
+    request_id = mb.get("request_id")
     if not cid or not new_id:
         return
     with _conn() as conn:
-        row = conn.execute(
-            "SELECT id, name FROM restaurants"
-            " WHERE bot_request_user = %s AND (token IS NULL OR token = '')"
-            " ORDER BY id DESC LIMIT 1",
-            (cid,),
-        ).fetchone()
+        if request_id:
+            row = conn.execute(
+                "SELECT id, name FROM restaurants"
+                " WHERE id = %s AND bot_request_user = %s",
+                (request_id, cid),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT id, name FROM restaurants"
+                " WHERE bot_request_user = %s ORDER BY id DESC LIMIT 1",
+                (cid,),
+            ).fetchone()
     if not row:
         logging.warning("Управляемый бот %s создан, но запрос не найден (cid=%s)", new_id, cid)
         return
@@ -154,7 +161,7 @@ def handle_managed_bot(update: dict):
             (token, row["id"]),
         )
     username = new_bot.get("username")
-    logging.info("Бот @%s (#id=%s) создан -> сохранён в ресторан #%s", username, new_id, row["id"])
+    logging.info("Бот @%s (#id=%s) создан -> токен заменён в ресторане #%s", username, new_id, row["id"])
     tg("sendMessage", {
         "chat_id": cid,
         "text": (

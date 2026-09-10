@@ -22,6 +22,12 @@ TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "7"))
 PLATFORM_BOT_TOKEN = os.getenv("PLATFORM_BOT_TOKEN", "").strip()
 PLATFORM_USERNAME = os.getenv("PLATFORM_USERNAME", "").strip()
 
+# === Оплата подписки ===
+PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "demo").strip().lower()
+PAYMENT_CURRENCY = os.getenv("PAYMENT_CURRENCY", "RUB").strip()
+PLAN_MONTHS = [1, 3, 6, 12]
+PLAN_DISCOUNTS = {1: 0, 3: 10, 6: 15, 12: 20}
+
 # Админы ресторана — загружаются из БД, тут только запасной вариант
 ADMIN_IDS: list[int] = [
     int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip().isdigit()

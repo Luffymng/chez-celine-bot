@@ -1,3 +1,4 @@
+import calendar
 import os
 import re
 import sys
@@ -43,6 +44,59 @@ USER_STATUS_LABELS = {
 }
 PLAN_PERIOD = "месяц"
 
+METHOD_LABELS = {
+    "card": "Карта",
+    "sbp": "СБП",
+    "invoice": "По счёту",
+}
+
+
+# === Оплата: тарифы ===
+
+def _add_months(d: date, months: int) -> date:
+    month = d.month - 1 + months
+    year = d.year + month // 12
+    month = month % 12 + 1
+    last = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+    if month == 2 and last == 29 and not calendar.isleap(year):
+        last = 28
+    return date(year, month, min(d.day, last))
+
+
+def _fmt_money(value: int) -> str:
+    return f"{int(value):,}".replace(",", " ") + " ₽"
+
+
+app.jinja_env.filters["money"] = _fmt_money
+
+
+def _plans() -> list[dict]:
+    base = config.PLAN_PRICE
+    out = []
+    for m in config.PLAN_MONTHS:
+        disc = config.PLAN_DISCOUNTS.get(m, 0)
+        total = int(round(base * m * (1 - disc / 100)))
+        per_month = int(round(total / m))
+        out.append({
+            "months": m,
+            "total": total,
+            "per_month": per_month,
+            "discount": disc,
+            "saving": base * m - total,
+            "total_txt": _fmt_money(total),
+            "per_txt": _fmt_money(per_month),
+        })
+    return out
+
+
+def _next_paid_until(user: dict, months: int) -> date:
+    base = date.today()
+    for key in ("trial_ends_at", "paid_until"):
+        v = user.get(key)
+        if v:
+            base = max(base, v)
+    return _add_months(base, months)
+
 
 # === Помощники доступа ===
 
@@ -57,6 +111,10 @@ def _current_user() -> dict | None:
     user = cdb.get_user(uid)
     if user and user["status"] == "trial" and user["trial_ends_at"]:
         if user["trial_ends_at"] < date.today():
+            cdb.set_user_status(uid, "blocked")
+            user["status"] = "blocked"
+    if user and user["status"] == "active" and user.get("paid_until"):
+        if user["paid_until"] < date.today():
             cdb.set_user_status(uid, "blocked")
             user["status"] = "blocked"
     return user
@@ -155,25 +213,67 @@ def logout():
 @app.route("/subscribe")
 def subscribe():
     user = _current_user()
-    if user and _is_allowed(user):
-        return redirect(url_for("index"))
+    payments = cdb.get_payments(user["id"], 20) if user else []
+    days_left = None
+    if user and user.get("trial_ends_at"):
+        days_left = (user["trial_ends_at"] - date.today()).days
     return render_template(
         "subscribe.html",
         user=user,
+        plans=_plans(),
         plan_price=config.PLAN_PRICE,
         plan_period=PLAN_PERIOD,
+        payments=payments,
+        days_left=days_left,
+        provider=config.PAYMENT_PROVIDER,
+        currency=config.PAYMENT_CURRENCY,
+        method_labels=METHOD_LABELS,
     )
+
+
+@app.route("/pay", methods=["POST"])
+def pay():
+    user = _current_user()
+    if not user:
+        flash("Сначала войдите в аккаунт", "error")
+        return redirect(url_for("login"))
+    plan_map = {p["months"]: p for p in _plans()}
+    plan = plan_map.get(_int(request.form.get("months")))
+    if not plan:
+        flash("Выберите период оплаты", "error")
+        return redirect(url_for("subscribe"))
+    method = request.form.get("method")
+    if method not in METHOD_LABELS:
+        method = "card"
+    amount = plan["total"]
+    months = plan["months"]
+
+    if config.PAYMENT_PROVIDER == "demo" and method in ("card", "sbp"):
+        until = _next_paid_until(user, months)
+        cdb.create_payment(user["id"], amount, method, months, "paid", until)
+        cdb.set_user_paid(user["id"], until)
+        flash(
+            f"Оплата {_fmt_money(amount)} получена. Доступ активен до {until:%d.%m.%Y}.",
+            "ok",
+        )
+    else:
+        cdb.create_payment(user["id"], amount, method, months, "pending", None)
+        if user["status"] not in ("trial", "active"):
+            cdb.set_user_status(user["id"], "pending")
+        if config.PAYMENT_PROVIDER == "demo":
+            flash("Заявка на оплату по счёту отправлена. Активируем после подтверждения.", "ok")
+        else:
+            flash(f"Сформирован платёж на {_fmt_money(amount)}. Менеджер подтвердит после оплаты.", "ok")
+    return redirect(url_for("subscribe"))
 
 
 @app.route("/subscribe/request", methods=["POST"])
 def subscribe_request():
     user = _current_user()
-    if user and _is_allowed(user):
-        return redirect(url_for("index"))
     if user:
         cdb.set_user_status(user["id"], "pending")
         flash("Заявка отправлена. Активируем после подтверждения оплаты.", "ok")
-    return redirect(url_for("login"))
+    return redirect(url_for("subscribe"))
 
 
 # === Конструктор ===
@@ -187,7 +287,9 @@ def index(user):
     return render_template("restaurants.html", user=user, restaurants=restaurants,
                            welcome=welcome, plan_price=config.PLAN_PRICE,
                            trial_days=config.TRIAL_DAYS,
-                           kinds_list=kinds.KINDS) 
+                           kinds_list=kinds.KINDS,
+                           platform_enabled=bool(config.PLATFORM_BOT_TOKEN and config.PLATFORM_USERNAME),
+                           platform_username=config.PLATFORM_USERNAME) 
 
 
 @app.route("/create", methods=["POST"])
@@ -412,7 +514,18 @@ def admin_users(user):
 @_admin_required
 def admin_set_status(uid: int, user):
     status = request.form.get("status")
-    if status in ("trial", "active", "pending", "blocked"):
+    if status not in ("trial", "active", "pending", "blocked"):
+        return redirect(url_for("admin_users"))
+    target = cdb.get_user(uid)
+    if status == "active" and target:
+        pending = cdb.get_last_pending_payment(uid)
+        months = pending["months"] if pending else 1
+        until = _next_paid_until(target, months)
+        if pending:
+            cdb.mark_paid(pending["id"], until)
+        cdb.set_user_paid(uid, until)
+        flash(f"Оплата подтверждена — доступ активен до {until:%d.%m.%Y}.", "ok")
+    else:
         cdb.set_user_status(uid, status)
         flash("Статус пользователя обновлён", "ok")
     return redirect(url_for("admin_users"))

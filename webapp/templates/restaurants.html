@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Мои рестораны{% endblock %}
+{% block title %}Мои боты{% endblock %}
 {% block pagetitle %}Конструктор{% endblock %}
 {% block content %}
 
@@ -15,7 +15,7 @@
   <h2>Как это работает</h2>
   <div class="hero steps" style="background:transparent;color:var(--text);padding:0">
     <div class="step"><div class="n" style="background:var(--grad);color:#fff">1</div><div><b>Выберите тип бота</b><span>По для чего он: столики, услуги, специалисты</span></div></div>
-    <div class="step"><div class="n" style="background:var(--grad);color:#fff">2</div><div><b>Создайте бота в Telegram</b><span>У @BotFather получите токен</span></div></div>
+    <div class="step"><div class="n" style="background:var(--grad);color:#fff">2</div><div><b>Создайте бота в Telegram</b><span>Токен — у <a href="https://t.me/BotFather" target="_blank" style="color:#fff;text-decoration:underline">@BotFather</a> или кнопкой «⚡ Создать бота»</span></div></div>
     <div class="step"><div class="n" style="background:var(--grad);color:#fff">3</div><div><b>Заполните настройки</b><span>Название, адрес, часы, слоты</span></div></div>
   </div>
 </div>
@@ -58,9 +58,12 @@
     <div class="meta">📍 {{ r.address or 'адрес не указан' }}</div>
     <div class="meta">🕐 {{ r.hours or 'часы не заданы' }}</div>
     {% if r.token %}
-      <div class="meta" style="word-break:break-all">🤖 @нет — бот: {{ r.token[:16] }}…</div>
+      <div class="meta" style="word-break:break-all">🤖 Бот подключён: {{ r.token[:16] }}…</div>
     {% else %}
-      <div class="meta" style="color:var(--amber)">⚠ Не подключён токен бота — заполните в настройках</div>
+      {% if platform_enabled %}
+      <a class="btn sm" style="background:var(--amber);color:#fff" href="https://t.me/{{ platform_username }}?start=makebot_{{ r.id }}" target="_blank">⚡ Создать бота в Telegram</a>
+      {% endif %}
+      <div class="meta" style="color:var(--amber)">⚠ Токен не подключён{% if not platform_enabled %} — создайте бота у <a href="https://t.me/BotFather" target="_blank">@BotFather</a> и вставьте его в настройках{% endif %}</div>
     {% endif %}
     <div class="acts">
       <a class="btn sm" href="{{ url_for('dashboard', rid=r.id) }}">Панель</a>
