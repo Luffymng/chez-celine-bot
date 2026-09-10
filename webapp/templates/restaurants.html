@@ -20,28 +20,37 @@
   </div>
 </div>
 
-<div style="display:flex;align-items:center;justify-content:space-between;margin:22px 0 12px">
+<div class="newbot-row">
   <h2 style="font-size:17px">Ваши боты</h2>
-  <details style="position:relative">
-    <summary class="btn grad sm" style="list-style:none">+ Новый бот</summary>
-    <div class="card" style="position:absolute;right:0;top:42px;z-index:10;width:420px">
-      <form method="post" action="{{ url_for('create') }}">
-        <div class="field"><label>Зачем нужен бот?</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            {% for code, k in kinds_list.items() %}
-            <label class="type-card">
-              <input type="radio" name="bot_type" value="{{ code }}" {% if loop.first %}checked{% endif %}>
-              <span><b>{{ k.icon }} {{ k.label }}</b><br><small>{{ k.blurb }}</small></span>
-            </label>
-            {% endfor %}
-          </div>
-        </div>
-        <div class="field" style="margin-top:10px"><label>Название бизнеса</label><input name="name" placeholder="Например: Ресторан «Восток»" required></div>
-        <button class="btn" type="submit">Создать бота</button>
-      </form>
-    </div>
-  </details>
+  <button class="btn grad sm" onclick="openCreate()">+ Новый бот</button>
 </div>
+
+<div class="modal-bg" id="createModal" onclick="if(event.target===this)closeCreate()">
+  <div class="modal">
+    <button class="x" onclick="closeCreate()">✕</button>
+    <h2 style="font-size:17px;margin-bottom:2px">Новый бот</h2>
+    <div class="steps"><i class="on"></i><i></i><i></i></div>
+    <p class="hint" style="margin:8px 0 14px">Шаг 1–2 из 3: тип и название. На шаге 3 подключим токен — ботом можно пользоваться.</p>
+    <form method="post" action="{{ url_for('create') }}">
+      <div class="field"><label>Зачем нужен бот?</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          {% for code, k in kinds_list.items() %}
+          <label class="type-card">
+            <input type="radio" name="bot_type" value="{{ code }}" {% if loop.first %}checked{% endif %}>
+            <span><b>{{ k.icon }} {{ k.label }}</b><br><small>{{ k.blurb }}</small></span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px"><label>Название бизнеса</label><input name="name" placeholder="Например: Салон «Восток»" required autofocus></div>
+      <button class="btn grad" type="submit" style="width:100%;justify-content:center">Создать бота →</button>
+    </form>
+  </div>
+</div>
+<script>
+function openCreate(){ document.getElementById('createModal').classList.add('open'); }
+function closeCreate(){ document.getElementById('createModal').classList.remove('open'); }
+</script>
 
 {% if restaurants %}
 <div class="grid cols-2">
@@ -57,6 +66,14 @@
     </div>
     <div class="meta">📍 {{ r.address or 'адрес не указан' }}</div>
     <div class="meta">🕐 {{ r.hours or 'часы не заданы' }}</div>
+    {% set rmiss = [] %}
+    {% if not r.token %}{% set rmiss = rmiss + ['токен'] %}{% endif %}
+    {% if kc and not kc.tables and not (r.services_txt or '').strip() %}{% set rmiss = rmiss + ['услуги'] %}{% endif %}
+    {% if not r.address %}{% set rmiss = rmiss + ['адрес'] %}{% endif %}
+    {% if not r.active %}{% set rmiss = rmiss + ['включить'] %}{% endif %}
+    {% if rmiss %}
+    <div class="meta" style="color:var(--amber);font-size:12.5px">⚠ Осталось: {{ rmiss|join(', ') }} — <a href="{{ url_for('edit', rid=r.id) }}">настроить</a></div>
+    {% endif %}
     {% if r.token %}
       <div class="meta" style="word-break:break-all">🤖 Бот подключён: {{ r.token[:16] }}…</div>
     {% else %}

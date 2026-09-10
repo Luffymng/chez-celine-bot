@@ -3,6 +3,8 @@
 {% block pagetitle %}{{ r.name }} #{{ r.id }}{% endblock %}
 {% block content %}
 
+{% include "onboard.html" %}
+
 <div class="grid cols-4" style="display:grid">
   <div class="stat"><div class="l"><span class="dot" style="background:var(--amber)"></span>Сегодня</div><div class="n">{{ stats.today }}</div></div>
   <div class="stat"><div class="l"><span class="dot" style="background:var(--primary)"></span>Предстоящие</div><div class="n">{{ stats.upcoming }}</div></div>

@@ -1,0 +1,23 @@
+{% set steps = [] %}
+{% if not r.token %}
+  {% set steps = steps + [('Подключить токен бота', url_for('edit', rid=r.id) ~ '#token-field')] %}
+{% endif %}
+{% if not kind.tables and not (r.services_txt or '').strip() %}
+  {% set steps = steps + [('Добавить услуги', url_for('edit', rid=r.id) ~ '#services-field')] %}
+{% endif %}
+{% if not r.address or not r.hours %}
+  {% set steps = steps + [('Указать адрес и часы работы', url_for('edit', rid=r.id) ~ '#hours-field')] %}
+{% endif %}
+{% if not r.active %}
+  {% set steps = steps + [('Включить бота', url_for('edit', rid=r.id) ~ '#active-toggle')] %}
+{% endif %}
+{% if steps %}
+<div class="card" style="border:1px solid #f0d6a4;background:#fffcf4;margin-bottom:16px">
+  <h2 style="color:#a86a12;margin-bottom:6px">⚙ Чтобы бот заработал — осталось {{ steps|length }} {{ 'шаг' if steps|length == 1 else 'шага' if steps|length < 5 else 'шагов' }}</h2>
+  <ul style="margin:0;padding-left:18px;color:var(--text);font-size:14px;line-height:1.9">
+    {% for txt, href in steps %}
+    <li>{{ txt }} — <a href="{{ href }}">заполнить →</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
