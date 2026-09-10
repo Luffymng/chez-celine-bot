@@ -38,7 +38,14 @@
   nav a:hover{transform:translateX(2px)}
   nav a:hover,nav a.active{background:rgba(255,255,255,.08);color:#fff}
   nav .ic{width:20px;text-align:center}
-  aside .foot{margin-top:auto;color:#7d84b0;font-size:12px;padding:10px}
+  aside .foot{color:#7d84b0;font-size:12px;padding:10px}
+  .side-user{margin-top:auto;padding:10px 2px 6px}
+  .side-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:rgba(255,255,255,.05);min-width:0}
+  .side-name{color:#fff;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .side-admin{color:#ffd76a;font-size:11px;font-weight:600;margin-top:4px}
+  .side-logout{width:100%;justify-content:center;margin-top:8px;color:#fff;background:rgba(255,255,255,.12)}
+  .side-logout:hover{background:rgba(255,255,255,.18)}
+  .pill.small{font-size:11px;padding:2px 8px;border-radius:99px}
   main{flex:1;min-width:0;display:flex;flex-direction:column}
   .topbar{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.7);backdrop-filter:blur(6px)}
   .topbar h1{font-size:18px;font-weight:700}
@@ -251,22 +258,27 @@
         <a class="{{ 'active' if active=='admin' }}" href="{{ url_for('admin_users') }}"><span class="ic">👥</span> Пользователи</a>
       {% endif %}
     </nav>
+    {% if user %}
+    <div class="side-user">
+      <div class="side-card">
+        <div class="avatar">{{ (user.name or '?')[0]|upper if user.name else '?' }}</div>
+        <div style="min-width:0">
+          <div class="side-name">{{ user.name or 'Пользователь' }}</div>
+          <span class="pill {{ 'small' }} {{ 'ok' if user.status in ('active',) else 'trial' if user.status=='trial' else 'blocked' if user.status=='blocked' else 'pending' }}">
+            {{ 'Оплачен' if user.status=='active' else ('Пробный' ~ ((' · до ' ~ user.trial_ends_at) if user.trial_ends_at else '')) if user.status=='trial' else 'Заблокирован' if user.status=='blocked' else 'Ожидает оплату' }}
+          </span>
+          {% if user.get('is_admin') %}<div class="side-admin">Админ</div>{% endif %}
+        </div>
+      </div>
+      <a class="btn gray sm side-logout" href="{{ url_for('logout') }}">Выйти</a>
+    </div>
+    {% endif %}
     <div class="foot">Платформа брони-ботов</div>
   </aside>
   <main>
     <div class="topbar">
       <button class="hamburger" id="hamburger" aria-label="Открыть меню">☰</button>
       <a href="{{ url_for('index') }}" style="color:var(--text)"><h1>{% block pagetitle %}Кабинет{% endblock %}</h1></a>
-      <div class="spacer"></div>
-      {% if user %}
-        <span class="pill {{ 'ok' if user.status in ('active',) else 'trial' if user.status=='trial' else 'blocked' if user.status=='blocked' else 'pending' }}">
-          {{ 'Оплачен' if user.status=='active' else ('Пробный · до ' ~ (user.trial_ends_at or '')) if user.status=='trial' else 'Заблокирован' if user.status=='blocked' else 'Ожидает оплату' }}
-          {% if user.get('is_admin') %}<span style="opacity:.7">· Админ</span>{% endif %}
-        </span>
-        <div class="avatar">{{ (user.name or '?')[0]|upper if user.name else '?' }}</div>
-        <span class="muted" style="color:var(--muted)">{{ user.name }}</span>
-        <a class="btn gray sm" href="{{ url_for('logout') }}">Выйти</a>
-      {% endif %}
     </div>
     <div class="wrap">
       {% with messages = get_flashed_messages(with_categories=true) %}
