@@ -9,25 +9,35 @@
 
 <div class="hero">
   <h1>Добрый день, {{ user.name }} 👋</h1>
-  <p>Создайте бота-бронь для своего ресторана за 2 минуты — без программистов.</p>
+  <p>Создайте бота записи для своего бизнеса за 2 минуты — без программистов.</p>
 </div>
 <div class="card" style="margin-top:16px">
   <h2>Как это работает</h2>
   <div class="hero steps" style="background:transparent;color:var(--text);padding:0">
-    <div class="step"><div class="n" style="background:var(--grad);color:#fff">1</div><div><b>Создайте бота в Telegram</b><span>У @BotFather получите токен</span></div></div>
-    <div class="step"><div class="n" style="background:var(--grad);color:#fff">2</div><div><b>Заполните настройки</b><span>Название, адрес, часы, слоты</span></div></div>
-    <div class="step"><div class="n" style="background:var(--grad);color:#fff">3</div><div><b>Бот запущен</b><span>Изменения применяются сразу</span></div></div>
+    <div class="step"><div class="n" style="background:var(--grad);color:#fff">1</div><div><b>Выберите тип бота</b><span>По для чего он: столики, услуги, специалисты</span></div></div>
+    <div class="step"><div class="n" style="background:var(--grad);color:#fff">2</div><div><b>Создайте бота в Telegram</b><span>У @BotFather получите токен</span></div></div>
+    <div class="step"><div class="n" style="background:var(--grad);color:#fff">3</div><div><b>Заполните настройки</b><span>Название, адрес, часы, слоты</span></div></div>
   </div>
 </div>
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin:22px 0 12px">
-  <h2 style="font-size:17px">Ваши рестораны</h2>
+  <h2 style="font-size:17px">Ваши боты</h2>
   <details style="position:relative">
-    <summary class="btn grad sm" style="list-style:none">+ Новый ресторан</summary>
-    <div class="card" style="position:absolute;right:0;top:42px;z-index:10;width:380px">
+    <summary class="btn grad sm" style="list-style:none">+ Новый бот</summary>
+    <div class="card" style="position:absolute;right:0;top:42px;z-index:10;width:420px">
       <form method="post" action="{{ url_for('create') }}">
-        <div class="field"><label>Название ресторана</label><input name="name" placeholder="Например: Ресторан «Восток»" required></div>
-        <button class="btn" type="submit">Создать</button>
+        <div class="field"><label>Зачем нужен бот?</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            {% for code, k in kinds_list.items() %}
+            <label class="type-card">
+              <input type="radio" name="bot_type" value="{{ code }}" {% if loop.first %}checked{% endif %}>
+              <span><b>{{ k.icon }} {{ k.label }}</b><br><small>{{ k.blurb }}</small></span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="field" style="margin-top:10px"><label>Название бизнеса</label><input name="name" placeholder="Например: Ресторан «Восток»" required></div>
+        <button class="btn" type="submit">Создать бота</button>
       </form>
     </div>
   </details>
@@ -37,9 +47,13 @@
 <div class="grid cols-2">
 {% for r in restaurants %}
   <div class="r-card">
+    {% set kc = kinds_list.get(r.bot_type) %}
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <div class="name">{{ r.name }} <span style="color:var(--muted);font-weight:500">#{{ r.id }}</span></div>
-      <span class="pill {{ 'ok' if r.active else 'blocked' }}">{{ 'Активен' if r.active else 'Выкл.' }}</span>
+      <div class="name">{{ kc.icon if kc else r.bot_type }} {{ r.name }} <span style="color:var(--muted);font-weight:500">#{{ r.id }}</span></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="pill gray">{{ kc.label if kc else 'Ресторан' }}</span>
+        <span class="pill {{ 'ok' if r.active else 'blocked' }}">{{ 'Активен' if r.active else 'Выкл.' }}</span>
+      </div>
     </div>
     <div class="meta">📍 {{ r.address or 'адрес не указан' }}</div>
     <div class="meta">🕐 {{ r.hours or 'часы не заданы' }}</div>
@@ -59,10 +73,10 @@
 </div>
 {% else %}
 <div class="card" style="text-align:center;padding:44px 20px">
-  <div style="font-size:42px">🍽</div>
-  <h2 style="margin:10px 0 6px">Пока нет ни одного ресторана</h2>
+  <div style="font-size:42px">🤖</div>
+  <h2 style="margin:10px 0 6px">Пока нет ни одного бота</h2>
   <p class="muted" style="color:var(--muted);max-width:420px;margin:0 auto 16px">
-    Нажмите «+ Новый ресторан», добавьте название — и конструктор поможет подключить бота.
+    Нажмите «+ Новый бот», выберите тип (ресторан, салон, клиника или фитнес), добавьте название — и конструктор поможет подключить бота.
   </p>
 </div>
 {% endif %}

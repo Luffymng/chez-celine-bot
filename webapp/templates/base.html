@@ -50,6 +50,13 @@
   .cols-3{grid-template-columns:repeat(3,1fr)}
   .cols-4{grid-template-columns:repeat(4,1fr)}
   .cols-2-1{grid-template-columns:2fr 1fr}
+  .type-card{display:block;border:1px solid var(--line2);border-radius:10px;cursor:pointer;overflow:hidden;background:#fff}
+  .type-card input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+  .type-card span{display:block;padding:10px 12px;font-size:12.5px;line-height:1.4;background:#fff;transition:background .15s,border .15s,box-shadow .15s}
+  .type-card span b{display:block;margin-bottom:2px}
+  .type-card span small{color:var(--muted);font-weight:400}
+  .type-card input:checked + span{background:#f0efff;box-shadow:inset 0 0 0 1.5px var(--primary)}
+  .type-card input:focus-visible + span{box-shadow:0 0 0 3px rgba(103,86,255,.18)}
   @media(max-width:860px){.cols-2,.cols-3,.cols-4,.cols-2-1{grid-template-columns:1fr}}
 
   .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow)}

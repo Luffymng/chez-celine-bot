@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import cabinet_db as cdb
 import config
+import kinds
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -185,7 +186,8 @@ def index(user):
     welcome = request.args.get("welcome")
     return render_template("restaurants.html", user=user, restaurants=restaurants,
                            welcome=welcome, plan_price=config.PLAN_PRICE,
-                           trial_days=config.TRIAL_DAYS)
+                           trial_days=config.TRIAL_DAYS,
+                           kinds_list=kinds.KINDS) 
 
 
 @app.route("/create", methods=["POST"])
@@ -194,9 +196,12 @@ def create(user):
     _ensure_db()
     name = (request.form.get("name") or "").strip()
     if not name:
-        flash("Укажите название ресторана", "error")
+        flash("Укажите название бизнеса", "error")
         return redirect(url_for("index"))
-    rid = cdb.create_restaurant(name, user["id"])
+    bot_type = request.form.get("bot_type")
+    if bot_type not in kinds.KINDS:
+        bot_type = "restaurant"
+    rid = cdb.create_restaurant(name, user["id"], bot_type)
     return redirect(url_for("edit", rid=rid))
 
 
@@ -215,6 +220,7 @@ def dashboard(rid: int, user):
     remain = max(0, int(restaurant["default_tables"] or 0) - len(today_b))
     return render_template(
         "dashboard.html", user=user, r=restaurant,
+        kind=kinds.get_kind(restaurant.get("bot_type")),
         stats=stats, pending=pending, today_b=today_b, today=today, remain=remain,
         status_labels=STATUS_LABELS,
         now=datetime.now(),
@@ -255,6 +261,10 @@ def edit(rid: int, user):
             flash(f"Некорректный URL в поле «{bad_link}»: нужен адрес вида https://site.com/…", "error")
             return redirect(url_for("edit", rid=rid))
         try:
+            bot_type = request.form.get("bot_type", restaurant["bot_type"] or "restaurant")
+            if bot_type not in kinds.KINDS:
+                bot_type = "restaurant"
+            type_changed = bot_type != (restaurant["bot_type"] or "restaurant")
             cdb.update_restaurant(
                 rid,
                 name=request.form.get("name", ""),
@@ -283,14 +293,26 @@ def edit(rid: int, user):
                 restaurant_photo=_media_field("restaurant_photo", restaurant["restaurant_photo"]),
                 about_video=_media_field("about_video", restaurant["about_video"]),
                 active=request.form.get("active") == "on",
+                bot_type=bot_type,
+                services_txt=request.form.get("services_txt", "") or "",
+                masters_txt=request.form.get("masters_txt", "") or "",
+                resource_units=max(1, (nv("resource_units") or 1)),
             )
         except Exception:
             app.logger.exception("Ошибка сохранения")
             flash("Не удалось сохранить: проверьте заполнение полей", "error")
             return redirect(url_for("edit", rid=rid))
+        if type_changed:
+            flash(
+                f"Тип бота изменён на {kinds.KINDS[bot_type]['icon']} {kinds.KINDS[bot_type]['label']} — "
+                "бот перезапустится с новым сценарием записи",
+                "ok",
+            )
         flash("Изменения сохранены и переданы боту", "ok")
         return redirect(url_for("edit", rid=rid))
     return render_template("edit.html", user=user, r=restaurant,
+                           kind=kinds.get_kind(restaurant.get("bot_type")),
+                           kinds_list=kinds.KINDS,
                            platform_enabled=bool(config.PLATFORM_BOT_TOKEN and config.PLATFORM_USERNAME),
                            platform_username=config.PLATFORM_USERNAME)
 
@@ -312,6 +334,7 @@ def bookings(rid: int, user):
         items = cdb.list_bookings(rid, status=status)
     return render_template(
         "bookings.html", user=user, r=restaurant, items=items,
+        kind=kinds.get_kind(restaurant.get("bot_type")),
         status=status, on_date=on_date, upcoming=upcoming,
         status_labels=STATUS_LABELS, today=date.today().isoformat(),
     )
@@ -351,7 +374,14 @@ def preview(rid: int, user):
         flash("Доступ запрещён", "error")
         return redirect(url_for("index"))
     restaurant = cdb.get_restaurant(rid, user["id"], user.get("is_admin"))
-    return render_template("preview.html", user=user, r=restaurant)
+    return render_template(
+        "preview.html",
+        user=user,
+        r=restaurant,
+        kind=kinds.get_kind(restaurant.get("bot_type")),
+        services=kinds.parse_services_txt(restaurant.get("services_txt")),
+        masters=kinds.parse_masters_txt(restaurant.get("masters_txt")),
+    )
 
 
 # === Админ платформы ===

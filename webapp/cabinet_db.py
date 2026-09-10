@@ -17,6 +17,7 @@ ALLOWED_COLUMNS = {
     "table_capacity", "default_tables", "min_tables", "max_tables",
     "duration_options", "reminder_day_hours", "reminder_hour_hours",
     "menu_pdf", "restaurant_photo", "about_video", "active",
+    "bot_type", "services_txt", "masters_txt", "resource_units",
 }
 
 
@@ -60,6 +61,22 @@ def ensure_schema():
             conn.execute(
                 "ALTER TABLE restaurants ADD COLUMN bot_request_user BIGINT"
             )
+        for column, ddl in (
+            ("bot_type", "ALTER TABLE restaurants ADD COLUMN bot_type TEXT NOT NULL DEFAULT 'restaurant'"),
+            ("services_txt", "ALTER TABLE restaurants ADD COLUMN services_txt TEXT NOT NULL DEFAULT ''"),
+            ("masters_txt", "ALTER TABLE restaurants ADD COLUMN masters_txt TEXT NOT NULL DEFAULT ''"),
+            ("resource_units", "ALTER TABLE restaurants ADD COLUMN resource_units INTEGER NOT NULL DEFAULT 1"),
+            ("service_name", "ALTER TABLE bookings ADD COLUMN service_name TEXT NOT NULL DEFAULT ''"),
+            ("master_name", "ALTER TABLE bookings ADD COLUMN master_name TEXT NOT NULL DEFAULT ''"),
+        ):
+            table = "bookings" if column in ("service_name", "master_name") else "restaurants"
+            exists = conn.execute(
+                "SELECT 1 FROM information_schema.columns"
+                " WHERE table_name=%s AND column_name=%s",
+                (table, column),
+            ).fetchone()
+            if not exists:
+                conn.execute(ddl)
         conn.execute(
             "UPDATE restaurants SET user_id = NULL WHERE user_id NOT IN "
             "(SELECT id FROM users) AND user_id IS NOT NULL"
@@ -149,11 +166,11 @@ def get_restaurant(rid: int, user_id: int | None = None, is_admin: bool = False)
         ).fetchone()
 
 
-def create_restaurant(name: str, user_id: int | None = None):
+def create_restaurant(name: str, user_id: int | None = None, bot_type: str = "restaurant"):
     with _conn() as conn:
         return conn.execute(
-            "INSERT INTO restaurants (name, user_id) VALUES (%s, %s) RETURNING id",
-            (name, user_id),
+            "INSERT INTO restaurants (name, user_id, bot_type) VALUES (%s, %s, %s) RETURNING id",
+            (name, user_id, bot_type),
         ).fetchone()["id"]
 
 

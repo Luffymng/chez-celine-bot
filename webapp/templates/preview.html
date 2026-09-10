@@ -28,8 +28,13 @@
       <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:13.5px;line-height:1.8">
         <li>Календарь: сегодняшние дни закрыты «•»</li>
         <li>Время считается по настройкам часов (в выходные по отдельным часам)</li>
+        {% if kind.tables %}
         <li>Лимит гостей и длительности берутся из конструктора</li>
-        <li>В конце — сводка брони как после ввода номера</li>
+        {% else %}
+        <li>Шаги «{{ kind.menu_label }}» и «{{ kind.master_label|capitalize }}» — из списков в настройках</li>
+        <li>Свободный слот — не занять ни одной записью</li>
+        {% endif %}
+        <li>В конце — сводка записи как после ввода номера</li>
       </ul>
     </div>
     <div class="card">
@@ -56,8 +61,21 @@ const R = {
   durations: {{ (r.duration_options or '60,90,120,150,180')|tojson }},
   table_capacity: {{ r.table_capacity or 4 }},
   menu: {{ (r.menu_pdf or '')|tojson }},
+  kind: {{ (r.bot_type or 'restaurant')|tojson }},
+  kind_label: {{ (kind.label)|tojson }},
+  book_label: {{ (kind.book_label)|tojson }},
+  menu_label: {{ (kind.menu_emoji + ' ' + kind.menu_label)|tojson }},
+  master_label: {{ (kind.master_label or 'мастер')|tojson }},
+  services: {{ services|tojson }},
+  masters: {{ masters|tojson }},
 };
 R.durations = R.durations.split(',').map(x => parseInt(x, 10)).filter(x => x);
+const IS_TABLE = R.kind === 'restaurant';
+const STEPS = IS_TABLE
+  ? ['date','guests','duration','time','name','phone','comment']
+  : ['service','master','date','time','name','phone','comment'];
+function stepNo(token){ return STEPS.indexOf(token) + 1; }
+function fmtMin(m){ if (m % 60 === 0) return (m/60) + ' ч'; if (m < 60) return m + ' мин'; return Math.floor(m/60) + ' ч ' + (m%60) + ' мин'; }
 
 const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 
@@ -96,14 +114,14 @@ function kb(rows){
 function emptyKb(){ kbBox.innerHTML = ''; }
 
 function ask(text, rows){ bubble(text, false); kb(rows); }
-function gotoMain(){ ask('<b>' + (R.name || 'Ресторан') + '</b><br>' + (R.address || ''), mainButtons()); }
+function gotoMain(){ ask('<b>' + (R.name || R.kind_label) + '</b><br>' + (R.address || ''), mainButtons()); }
 
 function mainButtons(){
   const rows = [];
   const mk = b => ({ text: b.text, primary: b.primary, danger: b.danger, onclick: b.onclick });
-  rows.push([mk({text:'🍽 Забронировать столик', primary:true, onclick:stepCalendar})]);
+  rows.push([mk({text:R.book_label, primary:true, onclick:stepCalendar})]);
   rows.push([mk({text:'📋 Мои брони', onclick:showMine})]);
-  rows.push([mk({text:'📖 Меню', onclick:showMenu})]);
+  rows.push([mk({text:R.menu_label, onclick:showMenu})]);
   rows.push([mk({text:'ℹ️ О нас', onclick:function(){ show('О нас', R.name ? 'Мы всегда рады гостям!' : 'Информация появится после заполнения настроек.') }})]);
   rows.push([mk({text:'🕐 Часы работы', onclick:function(){ show('Часы работы', R.hours || 'Часы не заполнены') }})]);
   rows.push([mk({text:'📞 Контакты', onclick:showContacts})]);
@@ -111,10 +129,10 @@ function mainButtons(){
   return rows;
 }
 function show(title, text){ ask('ℹ️ <b>' + title + '</b><br>' + (text || ''), [[{text:'↩️ В меню', onclick:gotoMain}]]); }
-function showMine(){ show('Мои брони', 'У вас пока нет активных броней. Нажмите «🍽 Забронировать столик», чтобы оставить заявку.'); }
+function showMine(){ show('Мои брони', 'У вас пока нет активных броней. Нажмите «' + R.book_label + '», чтобы оставить заявку.'); }
 function showMenu(){
-  if (R.menu) { guest('📖 Меню'); bubble('📖 <b>Меню «' + R.name + '»</b><br><span style="opacity:.6">(файл PDF)</span>', false); kb([[{text:'↩️ В меню', onclick:gotoMain}]]); }
-  else show('Меню', 'Меню скоро появится. Добавьте PDF в «🎞 Медиа и файлы».');
+  if (R.menu) { guest(R.menu_label); bubble(R.menu_label.split(' ')[0] + ' <b>' + (R.name || '') + '</b><br><span style="opacity:.6">(файл PDF)</span>', false); kb([[{text:'↩️ В меню', onclick:gotoMain}]]); }
+  else show('Услуги', 'Услуги скоро появятся. Добавьте PDF в «🎞 Медиа и файлы».');
 }
 function showContacts(){
   const lines = [];
@@ -156,7 +174,7 @@ function stepCalendar(){
   for (let d=1; d<=daysInMonth; d++) {
     const iso = view.year + '-' + ('0'+(view.month+1)).slice(-2) + '-' + ('0'+d).slice(-2);
     const dt = new Date(view.year, view.month, d);
-    row.push({ text: dt < today0 ? '•' : String(d), onclick: dt < today0 ? ()=>{} : () => { state.date = iso; stepGuests(); } });
+    row.push({ text: dt < today0 ? '•' : String(d), onclick: dt < today0 ? ()=>{} : () => { state.date = iso; IS_TABLE ? stepGuests() : stepTime(); } });
     if (row.length === 7) { darows.push(row); row = []; }
   }
   if (row.length) darows.push(row);
@@ -168,7 +186,35 @@ function stepCalendar(){
     {text:'▶️', onclick:()=>{view = next_; stepCalendar();}},
   ];
   const cancel = {text:'❌ Отмена', onclick:gotoMain};
-  ask('📅 <b>Шаг 1 из 7</b> — ' + MONTHS[view.month] + ' ' + view.year + ':', [darows[0], ...darows.slice(1), navRow, [cancel]]);
+  ask('📅 <b>Шаг ' + stepNo('date') + ' из ' + STEPS.length + '</b> — ' + MONTHS[view.month] + ' ' + view.year + ':', [darows[0], ...darows.slice(1), navRow, [cancel]]);
+}
+
+/* --- Шаг: услуга --- */
+function stepService(){
+  if (!R.services.length) { show('Услуги', 'Добавьте услуги в настройках бота.'); return; }
+  const rows = [];
+  let row = [];
+  R.services.forEach((s, i) => {
+    row.push({text: s.name + ' · ' + fmtMin(s.minutes), onclick: () => { state.service = s; (R.masters.length && STEPS.indexOf('master') !== -1) ? stepMaster() : stepCalendar(); }});
+    if (row.length === 2) { rows.push(row); row = []; }
+  });
+  if (row.length) rows.push(row);
+  rows.push([{text:'❌ Отмена', onclick:gotoMain}]);
+  ask('💈 <b>Шаг ' + stepNo('service') + ' из ' + STEPS.length + '</b> — выберите услугу:', rows);
+}
+
+/* --- Шаг: мастер --- */
+function stepMaster(){
+  if (!R.masters.length) { stepCalendar(); return; }
+  const rows = [];
+  let row = [];
+  R.masters.forEach((m, i) => {
+    row.push({text: '👤 ' + m, onclick: () => { state.master = m; stepCalendar(); }});
+    if (row.length === 2) { rows.push(row); row = []; }
+  });
+  if (row.length) rows.push(row);
+  rows.push([{text:'❌ Отмена', onclick:gotoMain}]);
+  ask('👤 <b>Шаг ' + stepNo('master') + ' из ' + STEPS.length + '</b> — выберите ' + (R.master_label || 'мастера') + ':', rows);
 }
 
 /* --- Шаг 2: гости --- */
@@ -181,7 +227,7 @@ function stepGuests(){
   }
   if (row.length) rows.push(row);
   rows.push([{text:'❌ Отмена', onclick:gotoMain}]);
-  ask('👥 <b>Шаг 2 из 7</b> — сколько гостей будет за столом?', rows);
+  ask('👥 <b>Шаг ' + stepNo('guests') + ' из ' + STEPS.length + '</b> — сколько гостей будет за столом?', rows);
 }
 
 /* --- Шаг 3: длительность --- */
@@ -194,7 +240,7 @@ function stepDuration(){
   });
   if (row.length) rows.push(row);
   rows.push([{text:'❌ Отмена', onclick:gotoMain}]);
-  ask('⏳ <b>Шаг 3 из 7</b> — сколько времени планируете у нас провести?', rows);
+  ask('⏳ <b>Шаг ' + stepNo('duration') + ' из ' + STEPS.length + '</b> — сколько времени планируете у нас провести?', rows);
 }
 
 /* --- Шаг 4: время --- */
@@ -209,7 +255,7 @@ function stepTime(){
   if (row.length) rows.push(row);
   if (!rows.length) { ask('😔 На эту дату слотов нет — выберите другую.', [[{text:'↩️ В меню', onclick:gotoMain}]]); return; }
   rows.push([{text:'❌ Отмена', onclick:gotoMain}]);
-  ask('🕐 <b>Шаг 4 из 7</b> — выберите время:', rows);
+  ask('🕐 <b>Шаг ' + stepNo('time') + ' из ' + STEPS.length + '</b> — выберите время:', rows);
 }
 
 /* --- Шаг 5-7: имя / телефон / комментарий (миниклав-инпут) --- */
@@ -227,13 +273,13 @@ function inputStep(title, placeholder, cb){
   wrap.appendChild(inp); wrap.appendChild(go);
   kbBox.appendChild(wrap);
 }
-function stepName(){ inputStep('👤 <b>Шаг 5 из 7</b> — как к вам обращаться?<br><span style="opacity:.6">Введите имя</span>', 'Ваше имя', v => { state.name = v; stepPhone(); }); }
+function stepName(){ inputStep('👤 <b>Шаг ' + stepNo('name') + ' из ' + STEPS.length + '</b> — как к вам обращаться?<br><span style="opacity:.6">Введите имя</span>', 'Ваше имя', v => { state.name = v; stepPhone(); }); }
 function stepPhone(){
-  inputStep('📞 <b>Шаг 6 из 7</b> — поделитесь номером телефона<br><span style="opacity:.6">Введите номер</span>', '+375 29 123-45-67', v => { state.phone = v; stepComment(); });
+  inputStep('📞 <b>Шаг ' + stepNo('phone') + ' из ' + STEPS.length + '</b> — поделитесь номером телефона<br><span style="opacity:.6">Введите номер</span>', '+375 29 123-45-67', v => { state.phone = v; stepComment(); });
 }
 function stepComment(){
   const rows = [[{text:'Пропустить ➡️', onclick: () => { state.comment = null; showConfirm(); }}]];
-  ask('💬 <b>Шаг 7 из 7</b> — оставьте комментарий (необязательно)<br><span style="opacity:.6">Например: детское кресло, юбилей</span>', [rows[0]]);
+  ask('💬 <b>Шаг ' + stepNo('comment') + ' из ' + STEPS.length + '</b> — оставьте комментарий (необязательно)<br><span style="opacity:.6">Например: детское кресло, юбилей</span>', [rows[0]]);
   const wrap = document.createElement('div');
   wrap.className = 'kb-row input-kb';
   const inp = document.createElement('input'); inp.placeholder = 'Комментарий';
@@ -246,13 +292,18 @@ function stepComment(){
 
 /* --- Подтверждение --- */
 function showConfirm(){
-  const small = state.guests <= (R.table_capacity || 4);
-  const table = small ? '🪑 Стол: 4-местный' : '🪑 Стол: большой (на 5–' + R.max_guests + ' чел.)';
-  let text = '📝 <b>Проверьте бронь:</b><br><br>' +
-    '📅 ' + fmtDate(state.date) + ' в ' + state.time + '<br>' +
-    '⏳ На ' + fmtDur(state.duration) + '<br>' +
-    '👥 Гостей: ' + state.guests + '<br>' + table + '<br>' +
-    '👤 ' + state.name + '<br>' + '📞 ' + state.phone;
+  let text = '📝 <b>Проверьте запись:</b><br><br>' +
+    '📅 ' + fmtDate(state.date) + ' в ' + state.time + '<br>';
+  if (IS_TABLE) {
+    const small = state.guests <= (R.table_capacity || 4);
+    const table = small ? '🪑 Стол: 4-местный' : '🪑 Стол: большой (на 5–' + R.max_guests + ' чел.)';
+    text += '⏳ На ' + fmtDur(state.duration) + '<br>' +
+      '👥 Гостей: ' + state.guests + '<br>' + table + '<br>';
+  } else {
+    if (state.service) text += '💈 ' + state.service.name + ' (' + fmtMin(state.service.minutes) + ')<br>';
+    if (state.master) text += '👤 ' + state.master + '<br>';
+  }
+  text += '👤 ' + state.name + '<br>' + '📞 ' + state.phone;
   if (state.comment) text += '<br>💬 ' + state.comment;
   text += '<br><br>Всё верно?';
   ask(text, [
@@ -265,9 +316,12 @@ function confirmBooking(){
   emptyKb();
   guest('✅ Подтвердить');
   const id = '' + (1000 + Math.floor(Math.random() * 9000));
+  let desc = IS_TABLE
+    ? 'на ' + fmtDur(state.duration) + ', ' + state.guests + ' чел.'
+    : ((state.service ? state.service.name : 'запись') + (state.master ? ', ' + state.master : ''));
   let text = '🎉 <b>Заявка отправлена!</b><br><br>' +
-    'Ваша бронь №' + id + ': ' + fmtDate(state.date) + ' в ' + state.time + ', ' +
-    'на ' + fmtDur(state.duration) + ', ' + state.guests + ' чел.<br><br>' +
+    'Ваша запись №' + id + ': ' + fmtDate(state.date) + ' в ' + state.time + ', ' +
+    desc + '<br><br>' +
     'Мы свяжемся с вами для подтверждения.<br><br>' +
     'Вопросы? Звоните: ' + (R.phone || '—');
   bubble(text, false);

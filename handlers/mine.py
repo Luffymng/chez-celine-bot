@@ -1,6 +1,7 @@
 import config
 import database as db
 import keyboards as kb
+import kinds
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
@@ -8,11 +9,12 @@ from utils import booking_text, edit_or_send
 
 router = Router()
 
-EMPTY = (
-    "📋 <b>Ваши брони</b>\n\n"
-    "У вас пока нет активных броней. "
-    "Забронируйте столик через главное меню 🍽"
-)
+
+def _empty_text() -> str:
+    k = kinds.get_kind(config.BOT_TYPE)
+    if k["confirm_kind"] == "table":
+        return "📋 <b>Ваши брони</b>\n\nУ вас пока нет активных броней. Забронируйте столик через главное меню 🍽"
+    return "📋 <b>Ваши записи</b>\n\nУ вас пока нет активных записей. Запишитесь через главное меню " + k["icon"]
 
 
 @router.callback_query(F.data == "mine")
@@ -20,7 +22,7 @@ async def my_bookings(event: CallbackQuery, state: FSMContext):
     await state.clear()
     bookings = await db.list_user_bookings(event.from_user.id)
     if not bookings:
-        await edit_or_send(event, EMPTY, kb.main_menu_kb())
+        await edit_or_send(event, _empty_text(), kb.main_menu_kb())
         return
 
     text = "📋 <b>Ваши брони</b>\n\nВыберите, чтобы увидеть детали или отменить:"

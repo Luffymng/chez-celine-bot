@@ -20,8 +20,21 @@
 <form method="post" enctype="multipart/form-data">
 
   <div class="card">
+    <h2>🤖 Тип бота</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      {% for code, k in kinds_list.items() %}
+      <label class="type-card">
+        <input type="radio" name="bot_type" value="{{ code }}" {% if (r.bot_type or 'restaurant') == code %}checked{% endif %}>
+        <span><b>{{ k.icon }} {{ k.label }}</b><br><small>{{ k.blurb }}</small></span>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="hint" style="margin-top:8px">Смена типа перезапустит бота с новым сценарием записи. Настройки и брони сохранятся.</div>
+  </div>
+
+  <div class="card">
     <h2>🏷 Основное</h2>
-    <div class="field"><label>Название ресторана</label><input name="name" value="{{ r.name }}"></div>
+    <div class="field"><label>Название</label><input name="name" value="{{ r.name }}"></div>
     <div class="field"><label>Адрес</label><input name="address" value="{{ r.address }}" placeholder="г. Минск, ул. Примерная, 1"></div>
     <div class="field"><label>Телефон</label><input name="phone" value="{{ r.phone }}" placeholder="+375 XX XXX-XX-XX"></div>
     <div class="field"><label>Часы работы (текст для гостей)</label><input name="hours" value="{{ r.hours }}" placeholder="Пн–Вс: 12:00 – 23:00"></div>
@@ -41,8 +54,11 @@
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="field"><label>Шаг слотов (минут)</label><input name="slot_minutes" type="number" value="{{ r.slot_minutes }}"><div class="hint">Например 30 — слоты каждые полчаса</div></div>
+      {% if kind.tables %}
       <div class="field"><label>Длительности брони (мин, через запятую)</label><input name="duration_options" value="{{ r.duration_options }}"><div class="hint">60, 90, 120…</div></div>
+      {% endif %}
     </div>
+    {% if kind.tables %}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="field"><label>Мин. гостей</label><input name="min_guests" type="number" value="{{ r.min_guests }}"></div>
       <div class="field"><label>Макс. гостей</label><input name="max_guests" type="number" value="{{ r.max_guests }}"></div>
@@ -53,11 +69,31 @@
       <div class="field"><label>Мин. столов</label><input name="min_tables" type="number" value="{{ r.min_tables }}"></div>
       <div class="field"><label>Макс. столов</label><input name="max_tables" type="number" value="{{ r.max_tables }}"></div>
     </div>
+    {% else %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field">
+        <label>{{ kind.menu_emoji }} {{ kind.menu_label }} (одна на строку: «Название, минуты»)</label>
+        <textarea name="services_txt" rows="6" placeholder="Стрижка, 30&#10;Окрашивание, 90&#10;Маникюр, 60">{{ r.services_txt }}</textarea>
+        <div class="hint">Длительность = сколько минут длится услуга. Кнопки в боте соберутся сами.</div>
+      </div>
+      <div class="field">
+        <label>👤 {{ kind.master_label|capitalize }}(ы)</label>
+        <textarea name="masters_txt" rows="6" placeholder="Иван&#10;Ольга&#10;Сергей">{{ r.masters_txt }}</textarea>
+        <div class="hint">Одна строка = один {{ kind.master_label }}. Если оставить пустым — шаг «{{ kind.master_label|capitalize }}» в боте пропадёт.</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field"><label>Параллельных записей в слот</label>
+        <input name="resource_units" type="number" value="{{ r.resource_units }}" min="1">
+        <div class="hint">Сколько записей в один слот максимум (обычно 1 — один {{ kind.master_label }} в один момент)</div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <div class="card">
     <h2>🎞 Медиа и файлы</h2>
-    <div class="hint" style="margin-bottom:10px">Загрузите файлы — бот подхватит их автоматически. Меню — PDF, фото — JPG/PNG, видео — MP4.</div>
+    <div class="hint" style="margin-bottom:10px">Загрузите файлы — бот подхватит их автоматически. {% if kind.tables %}Меню{% else %}{{ kind.menu_label }}{% endif %} — PDF, фото — JPG/PNG, видео — MP4.</div>
     <div class="field">
       <label>Фото на старт</label>
       <div class="file">
@@ -75,10 +111,10 @@
       </div>
     </div>
     <div class="field">
-      <label>Меню (PDF)</label>
+      <label>{{ kind.menu_emoji }} {{ kind.menu_label }} (PDF)</label>
       <div class="file">
         <input type="file" id="f_menu_pdf" name="file_menu_pdf" accept=".pdf" onchange="showName(this)">
-        <label for="f_menu_pdf" class="btn grad sm">📄 Загрузить меню</label>
+        <label for="f_menu_pdf" class="btn grad sm">📄 Загрузить</label>
         <span class="fname">{% if r.menu_pdf %}<code>{{ r.menu_pdf }}</code>{% else %}файл не выбран{% endif %}</span>
       </div>
     </div>
@@ -145,14 +181,14 @@
     <h2>👀 Превью</h2>
     <div class="phone">
       <div class="screen">
-        <div class="bubble"><b>{{ r.name or 'Ресторан' }}</b>
-{{ r.address or 'г. Минск' }}{% if r.hours %}
+        <div class="bubble"><b>{{ r.name or 'Бизнес' }}</b>
+{{ r.address or '' }}{% if r.hours %}
 {{ r.hours }}{% endif %}</div>
-        <div class="me">Забронировать столик? 🍽</div>
+        <div class="me">{{ kind.book_label }}?</div>
         <div class="kb">
-          <div class="btn grad">🍽 Забронировать столик</div>
+          <div class="btn grad">{{ kind.book_label }}</div>
           <div class="btn gray">📋 Мои брони</div>
-          <div class="btn gray">📖 Меню</div>
+          <div class="btn gray">{{ kind.menu_emoji }} {{ kind.menu_label }}</div>
           <div class="btn gray">ℹ️ О нас</div>
           <div class="btn gray">📞 Контакты</div>
           {% if r.instagram %}<div class="btn gray">📷 Instagram</div>{% endif %}

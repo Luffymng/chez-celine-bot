@@ -7,9 +7,14 @@
   <div class="stat"><div class="l"><span class="dot" style="background:var(--amber)"></span>Сегодня</div><div class="n">{{ stats.today }}</div></div>
   <div class="stat"><div class="l"><span class="dot" style="background:var(--primary)"></span>Предстоящие</div><div class="n">{{ stats.upcoming }}</div></div>
   <div class="stat"><div class="l"><span class="dot" style="background:var(--red)"></span>Неподтверждённые</div><div class="n">{{ stats.pending }}</div></div>
+  {% if kind.tables %}
   <div class="stat"><div class="l"><span class="dot" style="background:var(--green)"></span>Свободно столов</div><div class="n">{{ remain }}</div></div>
+  {% else %}
+  <div class="stat"><div class="l"><span class="dot" style="background:var(--green)"></span>Записей сегодня</div><div class="n">{{ stats.today }}</div></div>
+  {% endif %}
 </div>
 
+{% if kind.tables %}
 <div class="card" style="margin-top:16px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
     <div>
@@ -22,17 +27,30 @@
     </form>
   </div>
 </div>
+{% else %}
+<div class="card" style="margin-top:16px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div>
+      <h2>{{ kind.menu_emoji }} {{ kind.menu_label }} <span style="color:var(--muted);font-weight:400">({{ (r.services_txt or '').splitlines()|select|list|length }} шт., мастеров: {{ (r.masters_txt or '').splitlines()|select|list|length }})</span></h2>
+      <p class="hint">Одна запись на {{ kind.master_label }} в слоте. Параллельных окон: {{ r.resource_units }}.</p>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="card">
   <h2>Неподтверждённые брони <span class="pill gray" style="margin-left:6px">{{ stats.pending }}</span></h2>
   {% if pending %}
   <div class="table-scroll"><table>
-    <tr><th>#</th><th>Гость</th><th>Дата</th><th>Время</th><th>Гостей</th><th></th></tr>
+    <tr><th>#</th><th>Гость</th>{% if not kind.tables %}<th>Услуга</th>{% endif %}<th>Дата</th><th>Время</th>{% if kind.tables %}<th>Гостей</th>{% endif %}<th></th></tr>
     {% for b in pending %}
     <tr>
       <td>{{ b.id }}</td>
       <td><b>{{ b.guest_name }}</b><br><span style="color:var(--muted);font-size:12px">{{ b.phone }}</span></td>
-      <td>{{ b.date }}</td><td>{{ b.time }}</td><td>{{ b.guests }} чел.</td>
+      {% if not kind.tables %}
+      <td>{{ b.service_name or '—' }}{% if b.master_name %}<br><span style="color:var(--muted);font-size:12px">{{ b.master_name }}</span>{% endif %}</td>
+      {% endif %}
+      <td>{{ b.date }}</td><td>{{ b.time }}</td>{% if kind.tables %}<td>{{ b.guests }} чел.</td>{% endif %}
       <td style="white-space:nowrap">
         <form method="post" action="{{ url_for('set_status', rid=r.id, bid=b.id) }}" style="display:inline">
           <input type="hidden" name="status" value="confirmed">
@@ -53,10 +71,10 @@
   <h2>Сегодня ({{ today }})</h2>
   {% if today_b %}
   <div class="table-scroll"><table>
-    <tr><th>#</th><th>Гость</th><th>Время</th><th>Гостей</th><th>Статус</th></tr>
+    <tr><th>#</th><th>Гость</th>{% if not kind.tables %}<th>Услуга</th>{% endif %}<th>Время</th>{% if kind.tables %}<th>Гостей</th>{% endif %}<th>Статус</th></tr>
     {% for b in today_b %}
     <tr>
-      <td>{{ b.id }}</td><td>{{ b.guest_name }}</td><td>{{ b.time }}</td><td>{{ b.guests }}</td>
+      <td>{{ b.id }}</td><td>{{ b.guest_name }}</td>{% if not kind.tables %}<td>{{ b.service_name or '—' }}</td>{% endif %}<td>{{ b.time }}</td>{% if kind.tables %}<td>{{ b.guests }}</td>{% endif %}
       <td><span class="pill {{ 'ok' if b.status=='confirmed' else 'pending' if b.status=='pending' else 'blocked' }}">{{ status_labels[b.status] }}</span></td>
     </tr>
     {% endfor %}

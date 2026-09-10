@@ -5,6 +5,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery
 
 import config
+import kinds
 
 MONTHS_RU = [
     "января", "февраля", "марта", "апреля", "мая", "июня",
@@ -42,16 +43,32 @@ def booking_text(b: dict) -> str:
     lines = [
         f"🔖 <b>Бронь №{b['id']}</b>",
         f"📅 {format_date(b['date'])} в {b['time']}",
-        f"⏳ На {format_duration(b.get('duration_minutes') or 120)}",
-        f"👥 Гостей: {b['guests']}",
-        table_label(b['guests']),
-        f"👤 {escape(b['guest_name'])}",
-        f"📞 {escape(b['phone'])}",
     ]
+    if b.get("service_name"):
+        lines.append(f"💈 <b>{escape(b['service_name'])}</b>")
+        if b.get("master_name"):
+            lines.append(f"👤 {escape(b['master_name'])}")
+        lines.append(f"⏳ {kinds.fmt_minutes(b.get('duration_minutes') or 30)}")
+    else:
+        lines.append(f"⏳ На {format_duration(b.get('duration_minutes') or 120)}")
+        lines.append(f"👥 Гостей: {b['guests']}")
+        lines.append(table_label(b['guests']))
+    lines.append(f"👤 {escape(b['guest_name'])}")
+    lines.append(f"📞 {escape(b['phone'])}")
     if b.get("comment"):
         lines.append(f"💬 {escape(b['comment'])}")
     lines.append(f"Статус: {STATUS_TEXT.get(b['status'], b['status'])}")
     return "\n".join(lines)
+
+
+def booking_short(b: dict) -> str:
+    if b.get("service_name"):
+        tail = f"{b['service_name']}"
+        if b.get("master_name"):
+            tail += f", {b['master_name']}"
+    else:
+        tail = f"на {format_duration(b.get('duration_minutes') or 120)}, {b['guests']} чел."
+    return f"Бронь №{b['id']}: {format_date(b['date'])} в {b['time']}, {tail}"
 
 
 async def edit_or_send(event, text: str, kb=None):

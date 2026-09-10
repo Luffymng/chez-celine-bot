@@ -43,6 +43,11 @@ SLOT_MINUTES = 30
 MIN_GUESTS = 1
 MAX_GUESTS = 8
 
+BOT_TYPE = "restaurant"
+SERVICES: list[dict] = []
+MASTERS: list[str] = []
+RESOURCE_UNITS = 1
+
 TABLE_CAPACITY = 4
 DEFAULT_TABLES = 12
 MIN_TABLES = 1
@@ -61,7 +66,8 @@ def apply_settings(data: dict | None) -> None:
     """Заполняет глобальные настройки из строки ресторана (БД)."""
     if not data:
         return
-    global ADMIN_IDS
+    global ADMIN_IDS, BOT_TYPE, SERVICES, MASTERS, RESOURCE_UNITS
+    from kinds import KINDS, parse_masters_txt, parse_services_txt
     mapping = {
         "RESTAURANT_NAME": "name",
         "RESTAURANT_ADDRESS": "address",
@@ -97,3 +103,9 @@ def apply_settings(data: dict | None) -> None:
     ids = [int(x) for x in str(admin_raw).split(",") if x.strip().isdigit()]
     if ids:
         ADMIN_IDS = ids
+
+    raw_type = (data.get("bot_type") or "restaurant").strip()
+    BOT_TYPE = raw_type if raw_type in KINDS else "restaurant"
+    SERVICES = parse_services_txt(data.get("services_txt"))
+    MASTERS = parse_masters_txt(data.get("masters_txt"))
+    RESOURCE_UNITS = max(1, int(data.get("resource_units") or 1))

@@ -56,6 +56,10 @@ CREATE TABLE IF NOT EXISTS restaurants (
     menu_pdf TEXT NOT NULL DEFAULT '',
     restaurant_photo TEXT NOT NULL DEFAULT '',
     about_video TEXT NOT NULL DEFAULT '',
+    bot_type TEXT NOT NULL DEFAULT 'restaurant',
+    services_txt TEXT NOT NULL DEFAULT '',
+    masters_txt TEXT NOT NULL DEFAULT '',
+    resource_units INTEGER NOT NULL DEFAULT 1,
     active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP NOT NULL DEFAULT now()
 );
@@ -71,6 +75,8 @@ CREATE TABLE IF NOT EXISTS bookings (
     guests INTEGER NOT NULL,
     duration_minutes INTEGER NOT NULL DEFAULT 120,
     tables_needed INTEGER NOT NULL DEFAULT 1,
+    service_name TEXT NOT NULL DEFAULT '',
+    master_name TEXT NOT NULL DEFAULT '',
     comment TEXT,
     status TEXT NOT NULL DEFAULT 'pending',
     reminder_day_sent BOOLEAN NOT NULL DEFAULT false,
@@ -100,6 +106,15 @@ async def init_db() -> None:
         )
         if not col:
             await conn.execute("ALTER TABLE restaurants ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE")
+        for ddl in (
+            "ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS bot_type TEXT NOT NULL DEFAULT 'restaurant'",
+            "ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS services_txt TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS masters_txt TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS resource_units INTEGER NOT NULL DEFAULT 1",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS service_name TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS master_name TEXT NOT NULL DEFAULT ''",
+        ):
+            await conn.execute(ddl)
         # Ресторан по умолчанию, если настроек ещё нет
         row = await conn.fetchrow("SELECT id FROM restaurants WHERE id = $1", config.RESTAURANT_ID)
         if row is None:
@@ -151,6 +166,7 @@ async def update_restaurant(restaurant_id: int, **fields) -> None:
         "table_capacity", "default_tables", "min_tables", "max_tables",
         "duration_options", "reminder_day_hours", "reminder_hour_hours",
         "menu_pdf", "restaurant_photo", "about_video", "active",
+        "bot_type", "services_txt", "masters_txt", "resource_units",
     }
     fields = {k: v for k, v in fields.items() if k in allowed}
     if not fields:
@@ -198,6 +214,28 @@ async def free_tables(on_date: str, time: str) -> int:
     return total - occupied
 
 
+async def free_master_slots(on_date: str, slot: str, master: str) -> int:
+    """Свободных окон у мастера в слоте (1 окно = 1 запись по умолчанию).
+
+    Учитывает длительность записей и resource_units (параллельных окон)."""
+    units = config.RESOURCE_UNITS
+    target = _time_to_min(slot)
+    async with _pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT time, duration_minutes FROM bookings"
+            " WHERE restaurant_id = $1 AND date = $2 AND master_name = $3"
+            " AND status != 'cancelled'",
+            _rid(), on_date, master,
+        )
+    occupied = 0
+    for b in rows:
+        start = _time_to_min(b["time"])
+        end = start + b["duration_minutes"]
+        if start <= target < end:
+            occupied += 1
+    return units - occupied
+
+
 # === Брони ===
 
 async def create_booking(
@@ -210,15 +248,17 @@ async def create_booking(
     duration_minutes: int,
     tables_needed: int,
     comment: str | None,
+    service_name: str = "",
+    master_name: str = "",
 ) -> int:
     async with _pool.acquire() as conn:
         bid = await conn.fetchval(
             "INSERT INTO bookings"
             " (restaurant_id, user_id, guest_name, phone, date, time, guests,"
-            "  duration_minutes, tables_needed, comment, created_at)"
-            " VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
+            "  duration_minutes, tables_needed, service_name, master_name, comment, created_at)"
+            " VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id",
             _rid(), user_id, guest_name, phone, date, time, guests,
-            duration_minutes, tables_needed, comment,
+            duration_minutes, tables_needed, service_name, master_name, comment,
             datetime.now(),
         )
         return bid

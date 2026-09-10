@@ -6,6 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile, Message
 
 import config
+import kinds
 import keyboards as kb
 from utils import edit_or_send
 
@@ -13,11 +14,12 @@ router = Router()
 
 
 def _welcome() -> str:
+    k = kinds.get_kind(config.BOT_TYPE)
     return (
-        f"🍽 <b>{config.RESTAURANT_NAME}</b>\n\n"
+        f"{k['icon']} <b>{config.RESTAURANT_NAME}</b>\n\n"
         f"📍 {config.RESTAURANT_ADDRESS}\n"
         f"🕐 {config.RESTAURANT_HOURS}\n\n"
-        "Забронируйте столик прямо в Telegram — это займёт пару минут 😉"
+        f"{k['welcome_line']}"
     )
 
 
@@ -36,7 +38,7 @@ def _hours() -> str:
     return (
         "🕐 <b>Часы работы</b>\n\n"
         f"{config.RESTAURANT_HOURS}\n\n"
-        "Бронирование столиков возможно в рабочее время ресторана."
+        "Запись доступна в рабочее время."
     )
 
 
@@ -53,15 +55,16 @@ def _contacts() -> str:
 
 
 def _menu_fallback() -> str:
+    k = kinds.get_kind(config.BOT_TYPE)
     return (
-        f"📖 <b>Меню «{config.RESTAURANT_NAME}»</b>\n\n"
-        "Меню скоро появится здесь! А пока загляните в наш Instagram — "
-        "публикуем новинки и сезонные блюда."
+        f"{k['menu_emoji']} <b>{k['menu_label']} «{config.RESTAURANT_NAME}»</b>\n\n"
+        f"{k['menu_label']} скоро появится. А пока загляните в наш Instagram."
     )
 
 
 def _menu_caption() -> str:
-    return f"📖 <b>Меню «{config.RESTAURANT_NAME}»</b>"
+    k = kinds.get_kind(config.BOT_TYPE)
+    return f"{k['menu_emoji']} <b>{k['menu_label']} «{config.RESTAURANT_NAME}»</b>"
 
 
 async def show_main_menu(event):

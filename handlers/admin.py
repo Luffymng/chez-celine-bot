@@ -170,7 +170,7 @@ async def adm_export_run(event: CallbackQuery):
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter=";")
     writer.writerow(
-        ["ID", "Дата", "Время", "Длительность(мин)", "Гостей", "Имя", "Телефон", "Комментарий", "Статус", "Создано"]
+        ["ID", "Дата", "Время", "Длительность(мин)", "Гостей", "Услуга", "Мастер", "Имя", "Телефон", "Комментарий", "Статус", "Создано"]
     )
     for b in bookings:
         writer.writerow(
@@ -180,6 +180,8 @@ async def adm_export_run(event: CallbackQuery):
                 b["time"],
                 b.get("duration_minutes", 120),
                 b["guests"],
+                b.get("service_name") or "",
+                b.get("master_name") or "",
                 b["guest_name"],
                 b["phone"],
                 b.get("comment") or "",

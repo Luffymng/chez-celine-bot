@@ -4,7 +4,7 @@ from datetime import datetime
 
 import config
 import database as db
-from utils import booking_text, format_date, format_duration
+from utils import booking_short
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +26,7 @@ HOUR_MSG = (
 
 
 def _booking_info(b: dict) -> str:
-    return (
-        f"Бронь №{b['id']}: {format_date(b['date'])} в {b['time']}, "
-        f"на {format_duration(b.get('duration_minutes') or 120)}, "
-        f"{b['guests']} чел."
-    )
+    return booking_short(b)
 
 
 async def _send(bot, booking: dict, msg: str) -> None:

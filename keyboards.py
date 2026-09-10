@@ -9,6 +9,7 @@ from aiogram.types import (
 )
 
 import config
+import kinds
 
 MONTHS_RU = [
     "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -17,10 +18,11 @@ MONTHS_RU = [
 
 
 def main_menu_kb() -> InlineKeyboardMarkup:
+    kind = kinds.get_kind(config.BOT_TYPE)
     rows = [
-        [InlineKeyboardButton(text="🍽 Забронировать столик", callback_data="book")],
+        [InlineKeyboardButton(text=kind["book_label"], callback_data="book")],
         [InlineKeyboardButton(text="📋 Мои брони", callback_data="mine")],
-        [InlineKeyboardButton(text="📖 Меню", callback_data="menu")],
+        [InlineKeyboardButton(text="📖 Меню" if kind["confirm_kind"] == "table" else kind["menu_emoji"] + " " + kind["menu_label"], callback_data="menu")],
         [InlineKeyboardButton(text="ℹ️ О нас", callback_data="about")],
         [InlineKeyboardButton(text="🕐 Часы работы", callback_data="hours")],
         [InlineKeyboardButton(text="📞 Контакты", callback_data="contacts")],
@@ -155,6 +157,35 @@ def skip_comment_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text="Пропустить ➡️", callback_data="comment:skip")]]
     )
+
+
+def build_services_kb() -> InlineKeyboardMarkup:
+    rows = []
+    row = []
+    for i, s in enumerate(config.SERVICES):
+        label = f"{s['name']} · {kinds.fmt_minutes(s['minutes'])}"
+        row.append(InlineKeyboardButton(text=label, callback_data=f"services:{i}"))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([InlineKeyboardButton(text="❌ Отмена", callback_data="book:cancel")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def build_masters_kb() -> InlineKeyboardMarkup:
+    rows = []
+    row = []
+    for i, name in enumerate(config.MASTERS):
+        row.append(InlineKeyboardButton(text=f"👤 {name}", callback_data=f"master:{i}"))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([InlineKeyboardButton(text="❌ Отмена", callback_data="book:cancel")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def phone_kb() -> ReplyKeyboardMarkup:

@@ -29,12 +29,15 @@
 <div class="card">
   {% if items %}
   <div class="table-scroll"><table>
-    <tr><th>#</th><th>Гость</th><th>Дата</th><th>Время</th><th>Гостей</th><th>Длит.</th><th>Комментарий</th><th>Статус</th><th></th></tr>
+    <tr><th>#</th><th>Гость</th>{% if not kind.tables %}<th>Услуга</th>{% endif %}<th>Дата</th><th>Время</th><th>{% if kind.tables %}Гостей{% else %}Длит.{% endif %}</th><th>Комментарий</th><th>Статус</th><th></th></tr>
     {% for b in items %}
     <tr>
       <td>{{ b.id }}</td>
       <td><b>{{ b.guest_name }}</b><br><span style="color:var(--muted);font-size:12px">{{ b.phone }}</span></td>
-      <td>{{ b.date }}</td><td>{{ b.time }}</td><td>{{ b.guests }}</td>
+      {% if not kind.tables %}
+      <td>{{ b.service_name or '—' }}{% if b.master_name %}<br><span style="color:var(--muted);font-size:12px">{{ b.master_name }}</span>{% endif %}</td>
+      {% endif %}
+      <td>{{ b.date }}</td><td>{{ b.time }}</td>
       <td>{{ b.duration_minutes }} мин</td>
       <td style="max-width:180px;color:var(--muted)">{{ b.comment or '—' }}</td>
       <td><span class="pill {{ 'ok' if b.status=='confirmed' else 'pending' if b.status=='pending' else 'blocked' }}">{{ status_labels[b.status] }}</span></td>
